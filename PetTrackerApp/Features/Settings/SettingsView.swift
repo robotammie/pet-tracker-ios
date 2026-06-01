@@ -6,9 +6,18 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Notifications") {
-                Toggle("Banners", isOn: $store.settings.showsBannerNotifications)
-                Toggle("Sounds", isOn: $store.settings.playsNotificationSounds)
-                Toggle("Badges", isOn: $store.settings.updatesBadge)
+                Toggle(
+                    "Banners",
+                    isOn: $store.settings.globalNotificationPreferences.showsBanner
+                )
+                Toggle(
+                    "Sounds",
+                    isOn: $store.settings.globalNotificationPreferences.playsSound
+                )
+                Toggle(
+                    "Badges",
+                    isOn: $store.settings.globalNotificationPreferences.updatesBadge
+                )
 
                 Stepper(value: $store.settings.defaultDayOnlyNotificationHour, in: 0...23) {
                     Text("Daily reminder time: \(formattedHour(store.settings.defaultDayOnlyNotificationHour))")

@@ -2,7 +2,7 @@
 
 Pet Tracker is a personal iOS app for tracking cat care events, reminders, saved autofill data, and notification-driven care routines.
 
-The app is in early implementation. Stage 0 is complete: the SwiftUI project shell exists, builds for the iOS Simulator, and launches with sample data.
+The app is in early implementation. Stage 0 and Stage 1 are complete: the SwiftUI project shell exists, builds for the iOS Simulator, launches with sample data, and has tested domain, repository, and local persistence layers.
 
 ## Project Goals
 
@@ -37,6 +37,8 @@ Current direction:
 - Minimum iOS target: iOS 17.0 for the initial scaffold.
 - Persistence: architecture should support CloudKit/iCloud sync without forcing UI rewrites.
 - Data layer: keep persistence behind repository/service boundaries.
+- Local storage: SwiftData for pets, events, saved options, and reminders.
+- Device-local storage: UserDefaults for notification settings.
 - Notifications: use iOS local notification APIs, with app-level preferences where possible and system settings respected as overrides.
 
 ## Current App State
@@ -45,12 +47,18 @@ Implemented so far:
 
 - Xcode project and SwiftUI app entry point.
 - Tab shell for Home, Events, Pets, Reminders, and Settings.
-- Initial domain model scaffolding.
-- In-memory `PetCareStore` with sample data.
+- Domain model scaffolding for pets, care events, saved options, reminders, recurrence, and notification settings.
+- Validation/calculation helpers for food and medicine payloads.
+- Reminder scheduling helper for recurring reminders.
+- Repository protocols with an in-memory implementation.
+- SwiftData storage models, mappers, and repository implementations.
+- UserDefaults-backed per-device settings storage.
+- `PetCareStore` bridge with sample data seeding on first launch.
 - Read-only starter views for the main tabs.
 - Settings screen stub for notification preferences.
+- Unit tests for validation, calorie calculation, recurrence scheduling, hard delete, soft delete, and reminder mute behavior.
 
-The app currently uses sample data only. There is no real persistence, event creation, notification scheduling, or iCloud sync yet.
+The app now has local persistence. There is no event creation UI, notification scheduling, or iCloud sync yet.
 
 ## Setup and Run
 
@@ -59,6 +67,15 @@ Requirements:
 - Xcode 26.5 or newer.
 - iOS 26.5 Simulator platform installed in Xcode.
 - SF Symbols app is useful for browsing Apple system icons.
+
+Before first build after cloning:
+
+```sh
+cp PetTrackerApp/Services/SeedData.local.example.swift \
+  PetTrackerApp/Services/SeedData.local.swift
+```
+
+Then edit `PetTrackerApp/Services/SeedData.local.swift` with your own development seed data. The local file is ignored by git and is used ahead of the public `SeedData.swift` seed.
 
 Run in Xcode:
 
@@ -80,6 +97,15 @@ xcodebuild -project PetTrackerApp.xcodeproj \
 
 The local `DerivedData/` directory is ignored by git.
 
+Run tests from the command line:
+
+```sh
+xcodebuild test -project PetTrackerApp.xcodeproj \
+  -scheme PetTrackerApp \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -derivedDataPath DerivedData
+```
+
 ## Documentation
 
 - [design.md](./design.md): product requirements, data model notes, user flows, and future work.
@@ -99,4 +125,4 @@ Keep detailed requirements in `design.md` and detailed execution steps in `plan.
 
 ## Suggested Next Milestone
 
-Move into Stage 1: firm up the domain model and persistence shape before adding writable forms. This includes typed event payload validation, saved event option models, recurrence data structures, and the repository boundary that will eventually support local/iCloud persistence.
+Move into Stage 2: tighten the read-only navigation and views on top of persisted data before adding writable forms.

@@ -2,6 +2,14 @@ import Foundation
 
 extension PetCareStore {
     static var preview: PetCareStore {
+        if let localSeed = LocalSeedData.store {
+            return localSeed
+        }
+
+        if let seed = SeedData.store {
+            return seed
+        }
+
         let luna = Pet(id: UUID(), name: "Luna", caloriesPerDay: 220)
         let miso = Pet(id: UUID(), name: "Miso", caloriesPerDay: 250)
         let now = Date()
@@ -52,8 +60,7 @@ extension PetCareStore {
                 mode: .reminderToEvent,
                 eventType: .medicine,
                 dueAt: Calendar.current.date(byAdding: .hour, value: 1, to: now) ?? now,
-                dueStyle: .timestamp,
-                isCompleted: false
+                dueStyle: .timestamp
             ),
             Reminder(
                 id: UUID(),
@@ -61,8 +68,7 @@ extension PetCareStore {
                 mode: .pureReminder,
                 eventType: nil,
                 dueAt: Calendar.current.date(byAdding: .hour, value: 5, to: now) ?? now,
-                dueStyle: .dayOnly,
-                isCompleted: false
+                dueStyle: .dayOnly
             )
         ]
 

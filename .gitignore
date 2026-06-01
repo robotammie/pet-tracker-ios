@@ -6,6 +6,9 @@ DerivedData/
 xcuserdata/
 *.moved-aside
 
+# Personal development data
+PetTrackerApp/Services/SeedData.local.swift
+
 # Swift Package Manager
 .build/
 

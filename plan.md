@@ -67,17 +67,59 @@ xcodebuild -project PetTrackerApp.xcodeproj \
 
 Next stage: Stage 1.
 
-## Stage 1: Domain Model and Persistence Shape
-Goal: define the core data model before building screens that depend on it.
+## Stage 1A: Domain Model and Persistence Shape - Complete
+Goal: define the core data model and repository boundaries before building screens that depend on them.
+
+Confirmed decisions:
+- Keep minimum iOS target at iOS 17.0.
+- Use SwiftData-first architecture with repository boundaries.
+- Add actual persistence in Stage 1B before moving to later app features.
+- Notification presentation settings are per-device.
+- Editing saved food/medicine options affects future events only; existing events keep their stored payload.
+- Events are hard-deleted in v1.
+- Notifications/reminders may be hard-deleted, and may also be muted so the user can keep them for later use.
+
+Persistence approach options:
+
+Option A: SwiftData first, with repository interfaces around it.
+
+Pros:
+- Lowest friction for an iOS-native app.
+- Works naturally with Swift types and SwiftUI.
+- Good local persistence story before sync is introduced.
+- Can support CloudKit sync later if models are designed carefully.
+- Easier to learn and debug incrementally than starting directly with CloudKit records.
+
+Cons:
+- SwiftData has its own modeling constraints and migration behavior.
+- CloudKit compatibility still needs deliberate design.
+- Some sync/conflict behavior can feel indirect because SwiftData abstracts storage details.
+
+Option B: CloudKit-shaped models first, with local-only behavior during early development.
+
+Pros:
+- Forces early attention to sync constraints, stable IDs, record ownership, and CloudKit-compatible fields.
+- May reduce later surprises when iCloud sync is added.
+- Makes future sharing/sync boundaries more explicit.
+
+Cons:
+- More complexity before the app has many features.
+- Slower learning curve for a first mobile app.
+- More boilerplate around mapping and record-style thinking.
+- Can over-optimize for sync before the local product model has settled.
+
+Decision:
+- Use Option A for v1: SwiftData-first architecture behind repository interfaces.
+- Keep domain structs/enums clean enough that CloudKit compatibility can be added without rewriting views.
 
 Tasks:
-- Define core entities:
+- [x] Define core entities:
     - `Pet`
     - `CareEvent`
     - `SavedEventOption`
     - `Reminder`
     - `UserSettings`
-- Define enums:
+- [x] Define enums:
     - event type: food, litter, medicine
     - food type: wet, dry, treat
     - food unit: cup, oz
@@ -85,27 +127,98 @@ Tasks:
     - recurrence type: every N hours/days/weeks/months, N times per day
     - due style: timestamp, day-only
     - notification presentation settings: banner, sound, badge
-- Define typed payload structs for event data:
+- [x] Define typed payload structs for event data:
     - `FoodEventData`
     - `LitterEventData`
     - `MedicineEventData`
-- Add validation/sanitization helpers for each payload type.
-- Decide implementation path for persistence:
-    - Option A: SwiftData first, with repository interfaces around it.
-    - Option B: CloudKit-shaped models first, with local-only behavior during early development.
-- Prefer whichever path keeps learning friction reasonable while preserving a future CloudKit route.
+- [x] Add validation/sanitization helpers for each payload type.
+- [x] Define reminder status values, including active, completed, and muted.
+- [x] Define repository protocols for pets, events, saved options, reminders, and settings.
+- [x] Keep Stage 1A using in-memory implementations so screens can continue to render while the model settles.
 
 Mobile/data concepts to explain while building:
 - Why mobile apps often separate domain models from storage models.
 - Local persistence vs sync persistence.
 - Why storing calculated calories on events is safer than recalculating old history.
+- SwiftData basics and why it should sit behind repositories instead of being used directly from every view.
 
 Acceptance checks:
-- Models compile.
-- Payload validation quietly drops unsupported/wrongly typed data.
-- Food calories are stored on event creation/update.
-- Unit conversion is not attempted in v1.
-- Tests cover calorie calculation, food validation, and reminder next-due calculation basics.
+- [x] Models compile.
+- [x] Payload validation quietly drops unsupported/wrongly typed data.
+- [x] Food calories are stored on event creation/update.
+- [x] Unit conversion is not attempted in v1.
+- [x] Reminder mute status is represented distinctly from delete.
+- [x] Notification settings are represented as device-local settings.
+- [x] Repository protocols exist before real persistence is added.
+- [x] Tests cover calorie calculation, food validation, and reminder next-due calculation basics.
+
+Stage 1A notes:
+- Domain model: `PetTrackerApp/Models/DomainModels.swift`
+- Validation/calculation helpers: `PetTrackerApp/Models/DomainValidation.swift`
+- Reminder scheduling helper: `PetTrackerApp/Services/ReminderScheduler.swift`
+- Repository protocols: `PetTrackerApp/Repositories/RepositoryProtocols.swift`
+- In-memory implementation: `PetTrackerApp/Repositories/PetCareStore.swift`
+- Tests:
+    - `PetTrackerAppTests/DomainValidationTests.swift`
+    - `PetTrackerAppTests/ReminderSchedulerTests.swift`
+    - `PetTrackerAppTests/RepositoryTests.swift`
+- Verified with:
+
+```sh
+xcodebuild test -project PetTrackerApp.xcodeproj \
+  -scheme PetTrackerApp \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -derivedDataPath DerivedData
+```
+
+Result: 10 tests passed.
+
+## Stage 1B: Local Persistence - Complete
+Goal: replace the temporary in-memory store with local persistence before adding more feature flows.
+
+Tasks:
+- [x] Add SwiftData storage models.
+- [x] Map between domain models and SwiftData models.
+- [x] Implement repository protocols using SwiftData.
+- [x] Decide which data belongs in SwiftData vs device-local settings storage.
+    - Notification presentation settings are per-device and should not require iCloud sync.
+- [x] Add local migration/versioning notes while the model is still small.
+- [x] Keep CloudKit compatibility in mind, but do not enable iCloud sync yet.
+
+Acceptance checks:
+- [x] Pets, events, saved options, reminders, and applicable settings persist across app launches.
+- [x] Existing sample/preview data path still works for previews and development.
+- [x] Hard-delete behavior works for events.
+- [x] Notifications can be hard-deleted or muted.
+- [x] Saved option edits affect future events only.
+
+Stage 1B notes:
+- SwiftData storage models:
+    - `PetTrackerApp/Persistence/SwiftDataModels.swift`
+- Domain/storage mapping:
+    - `PetTrackerApp/Persistence/SwiftDataMappers.swift`
+- SwiftData repository implementations:
+    - `PetTrackerApp/Persistence/SwiftDataRepositories.swift`
+- Per-device settings storage:
+    - `PetTrackerApp/Persistence/UserDefaultsSettingsRepository.swift`
+- App persistence bridge:
+    - `PetTrackerApp/App/PersistentRootView.swift`
+- App startup now creates a SwiftData `ModelContainer` in `PetTrackerApp/PetTrackerAppApp.swift`.
+- First launch seeds development sample data only when no pets exist.
+- Current SwiftData records use stable IDs and mostly scalar fields to keep a later CloudKit migration approachable.
+- CloudKit sync is still intentionally disabled.
+- Tests:
+    - `PetTrackerAppTests/SwiftDataPersistenceTests.swift`
+- Verified with:
+
+```sh
+xcodebuild test -project PetTrackerApp.xcodeproj \
+  -scheme PetTrackerApp \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -derivedDataPath DerivedData
+```
+
+Result: 14 tests passed.
 
 ## Stage 2: Core Navigation and Read-Only Views
 Goal: make the app navigable and useful with sample data before adding forms.

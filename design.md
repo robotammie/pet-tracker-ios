@@ -104,6 +104,13 @@ Each event subtype will have specific data allowed. Any data not in this allow l
 Saved event data is scoped per event type. For example, saved food options should not appear in litter or medicine forms.
 Saved autofill options are global across pets for v1.
 Future versions may allow pet-specific saved options if that becomes useful.
+Editing saved food or medicine data affects future event creation only. Existing events keep their stored event payload.
+
+#### deletion behavior
+- Events are hard-deleted in v1.
+- Saved autofill options are soft-deleted so they stop appearing in forms without breaking old events.
+- Notifications/reminders can be hard-deleted.
+- Notifications/reminders can also be muted, allowing the user to keep the reminder definition for later use without it appearing as active/due.
 
 #### event type details
 
@@ -219,6 +226,8 @@ include relevant event info so it can autolog an event when marked complete.
 - Overdue notifications stay visible until completed, ignored, or deleted.
 - Include an ignore option.
     - Ignore until: updates the next due date to a selected date/time.
+- Include a mute status.
+    - Muted notifications are kept for later use but should not appear as active/due.
 - Recurring notifications should calculate the next due date from the completion time, not from the originally scheduled due time.
 - When completing a notification, the user may edit the completion time.
     - This supports cases where the user did the task earlier and is logging it later.
@@ -231,9 +240,11 @@ Notification preferences:
 - Global notification presentation preference.
     - Banner, sound, and badge controls should be available in-app for finer granularity.
     - iOS system settings may still override app-level notification preferences.
+    - Notification presentation preferences are per-device.
 - Optional per-event-type notification preferences.
     - Example: medicine reminders may be more intrusive than litter reminders.
     - Banner, sound, and badge preferences may vary by event type.
+    - Per-event-type notification presentation preferences are per-device.
 - Default notification time for daily/day-only reminders.
     - Default: 9:00 AM.
     - User can customize.

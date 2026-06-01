@@ -20,7 +20,31 @@
 		AA0000000000000000000011 /* PetDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000011 /* PetDetailView.swift */; };
 		AA0000000000000000000012 /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000012 /* NotificationsView.swift */; };
 		AA0000000000000000000013 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000013 /* SettingsView.swift */; };
+		AA0000000000000000000014 /* DomainValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000014 /* DomainValidation.swift */; };
+		AA0000000000000000000015 /* ReminderScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000015 /* ReminderScheduler.swift */; };
+		AA0000000000000000000016 /* RepositoryProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000016 /* RepositoryProtocols.swift */; };
+		AA0000000000000000000017 /* DomainValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000017 /* DomainValidationTests.swift */; };
+		AA0000000000000000000018 /* ReminderSchedulerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000018 /* ReminderSchedulerTests.swift */; };
+		AA0000000000000000000019 /* RepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000019 /* RepositoryTests.swift */; };
+		AA0000000000000000000020 /* SwiftDataModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000021 /* SwiftDataModels.swift */; };
+		AA0000000000000000000021 /* SwiftDataMappers.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000022 /* SwiftDataMappers.swift */; };
+		AA0000000000000000000022 /* SwiftDataRepositories.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000023 /* SwiftDataRepositories.swift */; };
+		AA0000000000000000000023 /* UserDefaultsSettingsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000024 /* UserDefaultsSettingsRepository.swift */; };
+		AA0000000000000000000024 /* SwiftDataPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000025 /* SwiftDataPersistenceTests.swift */; };
+		AA0000000000000000000025 /* PersistentRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000026 /* PersistentRootView.swift */; };
+		AA0000000000000000000026 /* SeedData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000027 /* SeedData.swift */; };
+		AA0000000000000000000027 /* SeedData.local.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000028 /* SeedData.local.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		EE0000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CC0000000000000000000008 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CC0000000000000000000004;
+			remoteInfo = PetTrackerApp;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		BB0000000000000000000000 /* PetTrackerApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PetTrackerApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -37,6 +61,21 @@
 		BB0000000000000000000011 /* PetDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Pets/PetDetailView.swift; sourceTree = "<group>"; };
 		BB0000000000000000000012 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Notifications/NotificationsView.swift; sourceTree = "<group>"; };
 		BB0000000000000000000013 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Settings/SettingsView.swift; sourceTree = "<group>"; };
+		BB0000000000000000000014 /* DomainValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/DomainValidation.swift; sourceTree = "<group>"; };
+		BB0000000000000000000015 /* ReminderScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/ReminderScheduler.swift; sourceTree = "<group>"; };
+		BB0000000000000000000016 /* RepositoryProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Repositories/RepositoryProtocols.swift; sourceTree = "<group>"; };
+		BB0000000000000000000017 /* DomainValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DomainValidationTests.swift; sourceTree = "<group>"; };
+		BB0000000000000000000018 /* ReminderSchedulerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderSchedulerTests.swift; sourceTree = "<group>"; };
+		BB0000000000000000000019 /* RepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoryTests.swift; sourceTree = "<group>"; };
+		BB0000000000000000000020 /* PetTrackerAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PetTrackerAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB0000000000000000000021 /* SwiftDataModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence/SwiftDataModels.swift; sourceTree = "<group>"; };
+		BB0000000000000000000022 /* SwiftDataMappers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence/SwiftDataMappers.swift; sourceTree = "<group>"; };
+		BB0000000000000000000023 /* SwiftDataRepositories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence/SwiftDataRepositories.swift; sourceTree = "<group>"; };
+		BB0000000000000000000024 /* UserDefaultsSettingsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence/UserDefaultsSettingsRepository.swift; sourceTree = "<group>"; };
+		BB0000000000000000000025 /* SwiftDataPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftDataPersistenceTests.swift; sourceTree = "<group>"; };
+		BB0000000000000000000026 /* PersistentRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/PersistentRootView.swift; sourceTree = "<group>"; };
+		BB0000000000000000000027 /* SeedData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/SeedData.swift; sourceTree = "<group>"; };
+		BB0000000000000000000028 /* SeedData.local.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/SeedData.local.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 		DD0000000000000000000001 /* PetTrackerApp */ = {
@@ -44,9 +83,19 @@
 			children = (
 				BB0000000000000000000001 /* PetTrackerAppApp.swift */,
 				BB0000000000000000000002 /* AppTabView.swift */,
+				BB0000000000000000000026 /* PersistentRootView.swift */,
 				BB0000000000000000000003 /* DomainModels.swift */,
+				BB0000000000000000000014 /* DomainValidation.swift */,
+				BB0000000000000000000021 /* SwiftDataModels.swift */,
+				BB0000000000000000000022 /* SwiftDataMappers.swift */,
 				BB0000000000000000000004 /* PetCareStore.swift */,
+				BB0000000000000000000016 /* RepositoryProtocols.swift */,
+				BB0000000000000000000023 /* SwiftDataRepositories.swift */,
+				BB0000000000000000000024 /* UserDefaultsSettingsRepository.swift */,
 				BB0000000000000000000005 /* PreviewData.swift */,
+				BB0000000000000000000027 /* SeedData.swift */,
+				BB0000000000000000000028 /* SeedData.local.swift */,
+				BB0000000000000000000015 /* ReminderScheduler.swift */,
 				BB0000000000000000000006 /* EventSummaryText.swift */,
 				BB0000000000000000000007 /* RelativeTimeText.swift */,
 				BB0000000000000000000008 /* HomeView.swift */,
@@ -68,6 +117,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CC0000000000000000000014 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -75,6 +131,7 @@
 			isa = PBXGroup;
 			children = (
 				DD0000000000000000000001 /* PetTrackerApp */,
+				DD0000000000000000000002 /* PetTrackerAppTests */,
 				CC0000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -83,8 +140,20 @@
 			isa = PBXGroup;
 			children = (
 				BB0000000000000000000000 /* PetTrackerApp.app */,
+				BB0000000000000000000020 /* PetTrackerAppTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		DD0000000000000000000002 /* PetTrackerAppTests */ = {
+			isa = PBXGroup;
+			children = (
+				BB0000000000000000000017 /* DomainValidationTests.swift */,
+				BB0000000000000000000018 /* ReminderSchedulerTests.swift */,
+				BB0000000000000000000019 /* RepositoryTests.swift */,
+				BB0000000000000000000025 /* SwiftDataPersistenceTests.swift */,
+			);
+			path = PetTrackerAppTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -109,6 +178,26 @@
 			productReference = BB0000000000000000000000 /* PetTrackerApp.app */;
 			productType = "com.apple.product-type.application";
 		};
+		CC0000000000000000000015 /* PetTrackerAppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CC0000000000000000000016 /* Build configuration list for PBXNativeTarget "PetTrackerAppTests" */;
+			buildPhases = (
+				CC0000000000000000000017 /* Sources */,
+				CC0000000000000000000014 /* Frameworks */,
+				CC0000000000000000000018 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EE0000000000000000000002 /* PBXTargetDependency */,
+			);
+			name = PetTrackerAppTests;
+			packageProductDependencies = (
+			);
+			productName = PetTrackerAppTests;
+			productReference = BB0000000000000000000020 /* PetTrackerAppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -121,6 +210,10 @@
 				TargetAttributes = {
 					CC0000000000000000000004 = {
 						CreatedOnToolsVersion = 26.5;
+					};
+					CC0000000000000000000015 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = CC0000000000000000000004;
 					};
 				};
 			};
@@ -139,12 +232,20 @@
 			projectRoot = "";
 			targets = (
 				CC0000000000000000000004 /* PetTrackerApp */,
+				CC0000000000000000000015 /* PetTrackerAppTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		CC0000000000000000000007 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC0000000000000000000018 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -160,9 +261,19 @@
 			files = (
 				AA0000000000000000000001 /* PetTrackerAppApp.swift in Sources */,
 				AA0000000000000000000002 /* AppTabView.swift in Sources */,
+				AA0000000000000000000025 /* PersistentRootView.swift in Sources */,
 				AA0000000000000000000003 /* DomainModels.swift in Sources */,
+				AA0000000000000000000014 /* DomainValidation.swift in Sources */,
+				AA0000000000000000000020 /* SwiftDataModels.swift in Sources */,
+				AA0000000000000000000021 /* SwiftDataMappers.swift in Sources */,
 				AA0000000000000000000004 /* PetCareStore.swift in Sources */,
+				AA0000000000000000000016 /* RepositoryProtocols.swift in Sources */,
+				AA0000000000000000000022 /* SwiftDataRepositories.swift in Sources */,
+				AA0000000000000000000023 /* UserDefaultsSettingsRepository.swift in Sources */,
 				AA0000000000000000000005 /* PreviewData.swift in Sources */,
+				AA0000000000000000000026 /* SeedData.swift in Sources */,
+				AA0000000000000000000027 /* SeedData.local.swift in Sources */,
+				AA0000000000000000000015 /* ReminderScheduler.swift in Sources */,
 				AA0000000000000000000006 /* EventSummaryText.swift in Sources */,
 				AA0000000000000000000007 /* RelativeTimeText.swift in Sources */,
 				AA0000000000000000000008 /* HomeView.swift in Sources */,
@@ -174,7 +285,26 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CC0000000000000000000017 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA0000000000000000000017 /* DomainValidationTests.swift in Sources */,
+				AA0000000000000000000018 /* ReminderSchedulerTests.swift in Sources */,
+				AA0000000000000000000019 /* RepositoryTests.swift in Sources */,
+				AA0000000000000000000024 /* SwiftDataPersistenceTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		EE0000000000000000000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CC0000000000000000000004 /* PetTrackerApp */;
+			targetProxy = EE0000000000000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		CC0000000000000000000010 /* Debug */ = {
@@ -348,6 +478,54 @@
 			};
 			name = Release;
 		};
+		CC0000000000000000000019 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tammie.PetTrackerAppTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PetTrackerApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PetTrackerApp";
+			};
+			name = Debug;
+		};
+		CC0000000000000000000020 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tammie.PetTrackerAppTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PetTrackerApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PetTrackerApp";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -365,6 +543,15 @@
 			buildConfigurations = (
 				CC0000000000000000000012 /* Debug */,
 				CC0000000000000000000013 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CC0000000000000000000016 /* Build configuration list for PBXNativeTarget "PetTrackerAppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CC0000000000000000000019 /* Debug */,
+				CC0000000000000000000020 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
