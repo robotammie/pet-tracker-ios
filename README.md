@@ -2,7 +2,7 @@
 
 Pet Tracker is a personal iOS app for tracking cat care events, reminders, saved autofill data, and notification-driven care routines.
 
-The app is currently in the planning/design stage.
+The app is in early implementation. Stage 0 is complete: the SwiftUI project shell exists, builds for the iOS Simulator, and launches with sample data.
 
 ## Project Goals
 
@@ -34,9 +34,51 @@ Current direction:
 
 - Platform: iOS native only.
 - UI: SwiftUI preferred.
+- Minimum iOS target: iOS 17.0 for the initial scaffold.
 - Persistence: architecture should support CloudKit/iCloud sync without forcing UI rewrites.
 - Data layer: keep persistence behind repository/service boundaries.
 - Notifications: use iOS local notification APIs, with app-level preferences where possible and system settings respected as overrides.
+
+## Current App State
+
+Implemented so far:
+
+- Xcode project and SwiftUI app entry point.
+- Tab shell for Home, Events, Pets, Reminders, and Settings.
+- Initial domain model scaffolding.
+- In-memory `PetCareStore` with sample data.
+- Read-only starter views for the main tabs.
+- Settings screen stub for notification preferences.
+
+The app currently uses sample data only. There is no real persistence, event creation, notification scheduling, or iCloud sync yet.
+
+## Setup and Run
+
+Requirements:
+
+- Xcode 26.5 or newer.
+- iOS 26.5 Simulator platform installed in Xcode.
+- SF Symbols app is useful for browsing Apple system icons.
+
+Run in Xcode:
+
+1. Open `PetTrackerApp.xcodeproj`.
+2. Select the `PetTrackerApp` scheme.
+3. Select an iPhone simulator.
+4. Press `Cmd+R`.
+
+Build from the command line:
+
+```sh
+xcodebuild -project PetTrackerApp.xcodeproj \
+  -scheme PetTrackerApp \
+  -configuration Debug \
+  -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath DerivedData \
+  build
+```
+
+The local `DerivedData/` directory is ignored by git.
 
 ## Documentation
 
@@ -55,6 +97,6 @@ Update this README when:
 
 Keep detailed requirements in `design.md` and detailed execution steps in `plan.md`. This README should stay short enough to orient someone quickly.
 
-## Suggested First Milestone
+## Suggested Next Milestone
 
-Build a SwiftUI shell with local sample data, a read-only homepage, a read-only food event list, and a pet page with calorie totals. This validates the hardest display rules before persistence, sync, and notifications add more moving parts.
+Move into Stage 1: firm up the domain model and persistence shape before adding writable forms. This includes typed event payload validation, saved event option models, recurrence data structures, and the repository boundary that will eventually support local/iCloud persistence.

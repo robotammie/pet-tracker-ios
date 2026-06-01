@@ -1,1 +1,13 @@
 .history/
+
+# Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+
+# Swift Package Manager
+.build/
+
+# macOS
+.DS_Store

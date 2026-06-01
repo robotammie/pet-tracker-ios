@@ -12,14 +12,15 @@ Known choices:
 - Treat food, litter, medicine, notifications, saved autofill options, pets, and settings as separate model concerns.
 - Keep v1 settings focused on notification preferences and the global day-only notification time.
 
-## Stage 0: Project Foundation
+## Stage 0: Project Foundation - Complete
 Goal: create a clean iOS app skeleton that can grow without turning into a pile of view code.
 
 Tasks:
-- Create a new iOS app project.
-- Use SwiftUI for the UI layer.
-- Choose minimum supported iOS version after checking SwiftData/CloudKit tradeoffs.
-- Establish app module folders, likely:
+- [x] Create a new iOS app project.
+- [x] Use SwiftUI for the UI layer.
+- [x] Choose initial minimum supported iOS version.
+    - Current scaffold uses iOS 17.0.
+- [x] Establish app module folders:
     - `App`
     - `Models`
     - `Persistence`
@@ -28,11 +29,13 @@ Tasks:
     - `Features`
     - `SharedUI`
     - `Tests`
-- Add basic dependency boundaries:
+- [x] Add basic dependency boundaries:
     - Views call view models or feature stores.
     - View models call repositories/services.
     - Persistence details stay out of views.
-- Add a small seed-data path for development previews and simulator testing.
+- [x] Add a small seed-data path for development previews and simulator testing.
+- [x] Verify simulator build.
+- [x] Verify simulator launch.
 
 Mobile concepts to explain while building:
 - SwiftUI app lifecycle.
@@ -40,10 +43,29 @@ Mobile concepts to explain while building:
 - State ownership: `@State`, `@Binding`, `@Observable`/view models, and why persistence should not leak everywhere.
 
 Acceptance checks:
-- App launches in simulator.
-- Main navigation shell exists.
-- Project has a clear folder/module shape.
-- Sample data can render without real persistence.
+- [x] App launches in simulator.
+- [x] Main navigation shell exists.
+- [x] Project has a clear folder/module shape.
+- [x] Sample data can render without real persistence.
+
+Stage 0 notes:
+- Project file: `PetTrackerApp.xcodeproj`
+- App entry point: `PetTrackerApp/PetTrackerAppApp.swift`
+- Main shell: `PetTrackerApp/App/AppTabView.swift`
+- Sample store: `PetTrackerApp/Repositories/PetCareStore.swift`
+- Preview data: `PetTrackerApp/Services/PreviewData.swift`
+- Verified with:
+
+```sh
+xcodebuild -project PetTrackerApp.xcodeproj \
+  -scheme PetTrackerApp \
+  -configuration Debug \
+  -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath DerivedData \
+  build
+```
+
+Next stage: Stage 1.
 
 ## Stage 1: Domain Model and Persistence Shape
 Goal: define the core data model before building screens that depend on it.
