@@ -220,28 +220,30 @@ xcodebuild test -project PetTrackerApp.xcodeproj \
 
 Result: 14 tests passed.
 
-## Stage 2: Core Navigation and Read-Only Views
+## Stage 2: Core Navigation and Read-Only Views - Complete
 Goal: make the app navigable and useful with sample data before adding forms.
 
 Tasks:
-- Build primary navigation:
+- [x] Build primary navigation:
     - Home
     - Events by type
     - Pet detail
     - Notifications
     - Settings
-- Build homepage sections:
-    - due/upcoming notifications through now + 24 hours
+- [x] Build homepage sections:
+    - overdue reminders plus due/upcoming notifications through now + 24 hours
     - most recent action per category
-    - quick add buttons
-- Build event list views:
+    - due and recent categories both collapsible with temporary in-memory state
+    - quick add buttons wired as no-op controls until Stage 3
+- [x] Build event list views:
     - food events grouped by day
     - medicine events grouped by day
-    - litter recent action/history where useful, without a dedicated litter history page for v1
-- Build pet detail:
+    - litter events grouped by day for consistency, without a dedicated litter history page for v1
+- [x] Build pet detail:
     - pet-specific food and medicine events
     - global food events inside daily food groups with a global indicator
     - exclude global food from pet-specific calorie totals
+    - show calorie totals by day in day headers
     - exclude litter cleaning events
 
 Mobile/UI concepts to explain while building:
@@ -250,10 +252,37 @@ Mobile/UI concepts to explain while building:
 - Why mobile views should optimize for quick repeated actions.
 
 Acceptance checks:
-- Sample data shows correctly on all main screens.
-- Global food appears on pet pages but does not affect daily calorie totals.
-- Litter cleaning does not appear on pet pages.
-- Navigation works comfortably on mobile-sized simulator screens.
+- [x] Sample data shows correctly on all main screens.
+- [x] Global food appears on pet pages but does not affect daily calorie totals.
+- [x] Litter cleaning does not appear on pet pages.
+- [x] Navigation works comfortably on mobile-sized simulator screens.
+
+Stage 2 decisions:
+- Quick add buttons should be visible but no-op until Stage 3 event creation exists.
+- Collapsed/expanded section state is temporary for Stage 2.
+- Persisting collapsed/expanded section preferences should be considered in a later settings/polish stage.
+- Home due/reminder section includes overdue reminders plus reminders due from now through the next 24 hours.
+- Event lists use consistent day grouping across food, medicine, and litter.
+- Pet detail day headers show daily calorie totals.
+
+Stage 2 notes:
+- Home screen now has no-op quick add controls and collapsible Due/Recent sections.
+- Events screen groups all event types by day.
+- Pet detail groups food/medicine by day, includes household food with a house indicator, excludes litter, and shows daily pet-specific calories in section headers.
+- Shared row/date grouping helpers:
+    - `PetTrackerApp/SharedUI/EventSummaryRow.swift`
+    - `PetTrackerApp/SharedUI/ReminderSummaryRow.swift`
+    - `PetTrackerApp/SharedUI/DateGrouping.swift`
+- Verified with:
+
+```sh
+xcodebuild test -project PetTrackerApp.xcodeproj \
+  -scheme PetTrackerApp \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -derivedDataPath DerivedData
+```
+
+Result: 15 tests passed.
 
 ## Stage 3: Event Creation and Saved Autofill Options
 Goal: support the core logging workflows.

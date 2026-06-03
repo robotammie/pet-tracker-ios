@@ -8,57 +8,57 @@ struct PetDetailView: View {
         store.events(for: pet)
     }
 
+    private var eventSections: [(day: Date, events: [CareEvent])] {
+        events.groupedByDay()
+    }
+
     var body: some View {
         List {
-            Section("Today") {
-                let calories = store.calories(for: pet, on: .now)
-
+            Section {
                 HStack {
-                    Text("Calories")
+                    Text("Daily goal")
                     Spacer()
-                    Text(calorieSummary(calories))
+                    Text(goalSummary)
                         .foregroundStyle(.secondary)
                 }
             }
 
-            Section("Care Events") {
+            Section {
                 if events.isEmpty {
                     ContentUnavailableView("No events yet", systemImage: "pawprint")
-                } else {
-                    ForEach(events) { event in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                if event.petID == nil {
-                                    Label("Household", systemImage: "house")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                } else {
-                                    Text(pet.name)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
+                }
+            }
 
-                                Spacer()
-                                Text(event.startTime, style: .time)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            EventSummaryText(event: event)
-                        }
+            ForEach(eventSections, id: \.day) { section in
+                Section {
+                    ForEach(section.events) { event in
+                        EventSummaryRow(event: event, petName: store.petName(for: event.petID))
                     }
+                } header: {
+                    Text(dayHeader(for: section.day))
                 }
             }
         }
         .navigationTitle(pet.name)
     }
 
-    private func calorieSummary(_ calories: Int) -> String {
+    private var goalSummary: String {
         guard let goal = pet.caloriesPerDay else {
-            return "\(calories) cal"
+            return "Not set"
         }
 
-        return "\(calories) / \(goal) cal"
+        return "\(goal) cal"
+    }
+
+    private func dayHeader(for day: Date) -> String {
+        let calories = store.calories(for: pet, on: day)
+        let date = day.formatted(date: .abbreviated, time: .omitted)
+
+        guard let goal = pet.caloriesPerDay else {
+            return "\(date) · \(calories) cal"
+        }
+
+        return "\(date) · \(calories) / \(goal) cal"
     }
 }
 

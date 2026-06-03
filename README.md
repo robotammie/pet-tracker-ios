@@ -54,7 +54,10 @@ Implemented so far:
 - SwiftData storage models, mappers, and repository implementations.
 - UserDefaults-backed per-device settings storage.
 - `PetCareStore` bridge with sample data seeding on first launch.
-- Read-only starter views for the main tabs.
+- Read-only navigation and list views for Home, Events, Pets, Reminders, and Settings.
+- Day-grouped event lists and pet detail sections with daily calorie totals.
+- Home summary sections for overdue/upcoming reminders and recent care by category.
+- No-op quick add controls ready to connect during event creation work.
 - Settings screen stub for notification preferences.
 - Unit tests for validation, calorie calculation, recurrence scheduling, hard delete, soft delete, and reminder mute behavior.
 
@@ -125,4 +128,4 @@ Keep detailed requirements in `design.md` and detailed execution steps in `plan.
 
 ## Suggested Next Milestone
 
-Move into Stage 2: tighten the read-only navigation and views on top of persisted data before adding writable forms.
+Move into Stage 3: add event creation flows and saved autofill option management.

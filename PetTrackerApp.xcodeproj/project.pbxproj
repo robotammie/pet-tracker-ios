@@ -34,6 +34,9 @@
 		AA0000000000000000000025 /* PersistentRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000026 /* PersistentRootView.swift */; };
 		AA0000000000000000000026 /* SeedData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000027 /* SeedData.swift */; };
 		AA0000000000000000000027 /* SeedData.local.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000028 /* SeedData.local.swift */; };
+		AA0000000000000000000028 /* EventSummaryRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000029 /* EventSummaryRow.swift */; };
+		AA0000000000000000000029 /* ReminderSummaryRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000030 /* ReminderSummaryRow.swift */; };
+		AA0000000000000000000030 /* DateGrouping.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000031 /* DateGrouping.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -76,6 +79,9 @@
 		BB0000000000000000000026 /* PersistentRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/PersistentRootView.swift; sourceTree = "<group>"; };
 		BB0000000000000000000027 /* SeedData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/SeedData.swift; sourceTree = "<group>"; };
 		BB0000000000000000000028 /* SeedData.local.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/SeedData.local.swift; sourceTree = "<group>"; };
+		BB0000000000000000000029 /* EventSummaryRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedUI/EventSummaryRow.swift; sourceTree = "<group>"; };
+		BB0000000000000000000030 /* ReminderSummaryRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedUI/ReminderSummaryRow.swift; sourceTree = "<group>"; };
+		BB0000000000000000000031 /* DateGrouping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedUI/DateGrouping.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 		DD0000000000000000000001 /* PetTrackerApp */ = {
@@ -97,7 +103,10 @@
 				BB0000000000000000000028 /* SeedData.local.swift */,
 				BB0000000000000000000015 /* ReminderScheduler.swift */,
 				BB0000000000000000000006 /* EventSummaryText.swift */,
+				BB0000000000000000000029 /* EventSummaryRow.swift */,
+				BB0000000000000000000030 /* ReminderSummaryRow.swift */,
 				BB0000000000000000000007 /* RelativeTimeText.swift */,
+				BB0000000000000000000031 /* DateGrouping.swift */,
 				BB0000000000000000000008 /* HomeView.swift */,
 				BB0000000000000000000009 /* EventListView.swift */,
 				BB0000000000000000000010 /* PetListView.swift */,
@@ -275,7 +284,10 @@
 				AA0000000000000000000027 /* SeedData.local.swift in Sources */,
 				AA0000000000000000000015 /* ReminderScheduler.swift in Sources */,
 				AA0000000000000000000006 /* EventSummaryText.swift in Sources */,
+				AA0000000000000000000028 /* EventSummaryRow.swift in Sources */,
+				AA0000000000000000000029 /* ReminderSummaryRow.swift in Sources */,
 				AA0000000000000000000007 /* RelativeTimeText.swift in Sources */,
+				AA0000000000000000000030 /* DateGrouping.swift in Sources */,
 				AA0000000000000000000008 /* HomeView.swift in Sources */,
 				AA0000000000000000000009 /* EventListView.swift in Sources */,
 				AA0000000000000000000010 /* PetListView.swift in Sources */,

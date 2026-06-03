@@ -10,6 +10,10 @@ struct EventListView: View {
             .sorted { $0.startTime > $1.startTime }
     }
 
+    private var eventSections: [(day: Date, events: [CareEvent])] {
+        filteredEvents.groupedByDay()
+    }
+
     var body: some View {
         List {
             Picker("Event type", selection: $selectedType) {
@@ -22,21 +26,16 @@ struct EventListView: View {
             Section(selectedType.rawValue) {
                 if filteredEvents.isEmpty {
                     ContentUnavailableView("No events yet", systemImage: "calendar.badge.exclamationmark")
-                } else {
-                    ForEach(filteredEvents) { event in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text(store.petName(for: event.petID))
-                                    .font(.subheadline.weight(.medium))
-                                Spacer()
-                                Text(event.startTime, style: .time)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+                }
+            }
 
-                            EventSummaryText(event: event)
-                        }
+            ForEach(eventSections, id: \.day) { section in
+                Section {
+                    ForEach(section.events) { event in
+                        EventSummaryRow(event: event, petName: store.petName(for: event.petID))
                     }
+                } header: {
+                    Text(section.day.formatted(date: .abbreviated, time: .omitted))
                 }
             }
         }

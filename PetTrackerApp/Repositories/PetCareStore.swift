@@ -62,6 +62,15 @@ final class PetCareStore: ObservableObject {
         Array(events.sorted { $0.startTime > $1.startTime }.prefix(limit))
     }
 
+    func mostRecentEventByType() -> [CareEvent] {
+        CareEventType.allCases.compactMap { type in
+            events
+                .filter { $0.type == type }
+                .sorted { $0.startTime > $1.startTime }
+                .first
+        }
+    }
+
     func upcomingReminders(now: Date = .now) -> [Reminder] {
         let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: now) ?? now
 

@@ -12,16 +12,7 @@ struct NotificationsView: View {
                     ContentUnavailableView("No active reminders", systemImage: "bell.slash")
                 } else {
                     ForEach(reminders) { reminder in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(reminder.title)
-                                .font(.headline)
-                            Text(reminder.mode.rawValue)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text(reminder.dueAt, style: .date)
-                                + Text(" at ")
-                                + Text(reminder.dueAt, style: .time)
-                        }
+                        ReminderSummaryRow(reminder: reminder)
                     }
                 }
             }
