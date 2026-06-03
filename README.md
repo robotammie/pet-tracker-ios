@@ -2,7 +2,7 @@
 
 Pet Tracker is a personal iOS app for tracking cat care events, reminders, saved autofill data, and notification-driven care routines.
 
-The app is in early implementation. Stage 0 and Stage 1 are complete: the SwiftUI project shell exists, builds for the iOS Simulator, launches with sample data, and has tested domain, repository, and local persistence layers.
+The app is in early implementation. Stages 0 through 3 are complete: the SwiftUI project shell exists, builds for the iOS Simulator, launches with sample data, persists locally with SwiftData, and supports core event creation plus saved food/medicine options.
 
 ## Project Goals
 
@@ -54,14 +54,18 @@ Implemented so far:
 - SwiftData storage models, mappers, and repository implementations.
 - UserDefaults-backed per-device settings storage.
 - `PetCareStore` bridge with sample data seeding on first launch.
-- Read-only navigation and list views for Home, Events, Pets, Reminders, and Settings.
+- Navigation and list views for Home, Events, Pets, Reminders, and Settings.
 - Day-grouped event lists and pet detail sections with daily calorie totals.
 - Home summary sections for overdue/upcoming reminders and recent care by category.
-- No-op quick add controls ready to connect during event creation work.
-- Settings screen stub for notification preferences.
+- Quick add flows for food, medicine, and litter care events.
+- Food creation with household or multi-pet destination selection, locked saved-food units, and calculated calories.
+- Medicine creation with multi-pet selection and per-pet dose entry.
+- Litter creation with editable timestamp.
+- Saved food and medicine option management from Settings, including soft delete.
+- Settings screen for notification preferences.
 - Unit tests for validation, calorie calculation, recurrence scheduling, hard delete, soft delete, and reminder mute behavior.
 
-The app now has local persistence. There is no event creation UI, notification scheduling, or iCloud sync yet.
+The app now has local persistence and core event creation. There is no notification scheduling UI or iCloud sync yet.
 
 ## Setup and Run
 
@@ -103,10 +107,21 @@ The local `DerivedData/` directory is ignored by git.
 Run tests from the command line:
 
 ```sh
-xcodebuild test -project PetTrackerApp.xcodeproj \
-  -scheme PetTrackerApp \
-  -destination 'platform=iOS Simulator,name=iPhone 17' \
-  -derivedDataPath DerivedData
+scripts/test.sh
+```
+
+The full test command has to launch the iOS Simulator test runner. The tests themselves are fast, but Xcode can spend a long silent stretch attaching to the simulator. For faster development checks:
+
+```sh
+scripts/build-for-testing.sh
+```
+
+Use this after code edits when you mainly need to confirm the app and test targets compile. It does not launch the simulator.
+
+After a successful build, rerun tests without rebuilding:
+
+```sh
+scripts/test-without-building.sh
 ```
 
 ## Documentation
@@ -128,4 +143,4 @@ Keep detailed requirements in `design.md` and detailed execution steps in `plan.
 
 ## Suggested Next Milestone
 
-Move into Stage 3: add event creation flows and saved autofill option management.
+Move into Stage 4: add reminder completion, recurrence behavior, and notification scheduling.

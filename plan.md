@@ -12,6 +12,16 @@ Known choices:
 - Treat food, litter, medicine, notifications, saved autofill options, pets, and settings as separate model concerns.
 - Keep v1 settings focused on notification preferences and the global day-only notification time.
 
+## Test Workflow Notes
+The XCTest bodies are currently fast, but iOS simulator test attachment can take 60-90 seconds and may look quiet while Xcode is waiting on the runner.
+
+Use these helpers:
+- `scripts/build-for-testing.sh` for day-to-day compile checks that do not need to run the simulator.
+- `scripts/test-without-building.sh` after a successful build when only rerunning tests.
+- `scripts/test.sh` for full milestone verification.
+
+The test helpers preboot the named simulator, disable parallel simulator destinations, and use the shared local `DerivedData/` directory.
+
 ## Stage 0: Project Foundation - Complete
 Goal: create a clean iOS app skeleton that can grow without turning into a pile of view code.
 
@@ -266,7 +276,7 @@ Stage 2 decisions:
 - Pet detail day headers show daily calorie totals.
 
 Stage 2 notes:
-- Home screen now has no-op quick add controls and collapsible Due/Recent sections.
+- Home screen added quick add controls and collapsible Due/Recent sections. Quick add was connected in Stage 3.
 - Events screen groups all event types by day.
 - Pet detail groups food/medicine by day, includes household food with a house indicator, excludes litter, and shows daily pet-specific calories in section headers.
 - Shared row/date grouping helpers:
@@ -284,7 +294,7 @@ xcodebuild test -project PetTrackerApp.xcodeproj \
 
 Result: 15 tests passed.
 
-## Stage 3: Event Creation and Saved Autofill Options
+## Stage 3: Event Creation and Saved Autofill Options - Complete
 Goal: support the core logging workflows.
 
 Food destination selection options:
@@ -337,15 +347,14 @@ Tasks:
     - shared creation sheet/navigation entry point launched by the Stage 2 quick add controls
     - form view models for food, medicine, litter, and saved option editing
     - active saved-option filtering helpers scoped by event type
-- Build shared event creation flow shell:
-    - event type selection
+- [x] Build shared event creation flow shell:
+    - event type routed from quick add
     - timestamp defaulted to now
     - editable timestamp
-    - optional saved autofill selection
-    - save/update saved option checkbox when edited/new data appears
-- Build food creation:
+    - saved autofill selection for food and medicine
+- [x] Build food creation:
     - household, one-pet, or multi-pet mode in one form
-    - saved food dropdown/new option
+    - saved food dropdown
     - amount input for household/one-pet mode
     - per-pet amount input for multi-pet mode
     - locked unit from saved food
@@ -354,16 +363,16 @@ Tasks:
     - allow amounts like 2 cans/units for a single logged event
     - multi-pet same-food/time creation
     - ignore blank/zero amounts in multi-pet creation
-- Build medicine creation:
+- [x] Build medicine creation:
     - pet required
-    - saved medicine dropdown/new option
+    - saved medicine dropdown
     - dosage/unit required
     - multiple pets with per-pet dose, creating one event per pet
-- Build litter creation:
+- [x] Build litter creation:
     - one-tap/global cleaning event
     - no pet selection
     - timestamp editable
-- Build saved option management:
+- [x] Build saved option management:
     - list saved options by event type
     - add/edit options
     - edit existing options in place for future use
@@ -411,6 +420,43 @@ xcodebuild test -project PetTrackerApp.xcodeproj \
 ```
 
 Result: 19 tests passed.
+
+Stage 3 completion notes:
+- Quick Add now opens working creation forms for food, medicine, and litter.
+- Food creation:
+    - Uses one destination menu containing Household plus each pet.
+    - Household is mutually exclusive with selected pets.
+    - Pet selections can be toggled on/off.
+    - Saved food locks unit and calories-per-unit.
+    - Household events create one global food event.
+    - Multi-pet entries create one pet-specific event per nonzero amount.
+- Medicine creation:
+    - Requires a saved medicine and at least one selected pet.
+    - Multiple selected pets create one event per pet with editable per-pet dose.
+- Litter creation:
+    - Creates a household litter event with editable timestamp.
+- Saved option management:
+    - Settings links to Food Options and Medicine Options.
+    - Options can be added, edited in place for future events, or soft-deleted.
+- New views:
+    - `PetTrackerApp/Features/EventCreation/FoodEventCreationView.swift`
+    - `PetTrackerApp/Features/EventCreation/MedicineEventCreationView.swift`
+    - `PetTrackerApp/Features/EventCreation/LitterEventCreationView.swift`
+    - `PetTrackerApp/Features/EventCreation/SavedOptionsListView.swift`
+    - `PetTrackerApp/Features/EventCreation/SavedOptionEditorView.swift`
+- New tests:
+    - `PetTrackerAppTests/MedicineEventFormViewModelTests.swift`
+    - `PetTrackerAppTests/SavedOptionFormViewModelTests.swift`
+- Verified with:
+
+```sh
+xcodebuild test -project PetTrackerApp.xcodeproj \
+  -scheme PetTrackerApp \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -derivedDataPath DerivedData
+```
+
+Result: 25 tests passed.
 
 ## Stage 4: Reminder and Notification Logic
 Goal: get reminder behavior correct before worrying about final notification polish.

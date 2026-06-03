@@ -29,6 +29,20 @@ struct SettingsView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
+
+            Section("Saved Options") {
+                NavigationLink {
+                    SavedOptionsListView(eventType: .food)
+                } label: {
+                    Label("Food", systemImage: "fork.knife")
+                }
+
+                NavigationLink {
+                    SavedOptionsListView(eventType: .medicine)
+                } label: {
+                    Label("Medicine", systemImage: "pills")
+                }
+            }
         }
         .navigationTitle("Settings")
     }

@@ -6,6 +6,7 @@ final class FoodEventFormViewModel: ObservableObject {
         case pets(Set<UUID>)
     }
 
+    @Published var selectedSavedOptionID: UUID?
     @Published var selectedFood: SavedFoodData?
     @Published var destination: Destination = .household
     @Published var timestamp: Date = .now
@@ -51,5 +52,66 @@ final class FoodEventFormViewModel: ObservableObject {
             amount: amount,
             caloriesPerUnit: selectedFood.caloriesPerUnit
         )
+    }
+
+    func selectSavedOption(_ option: SavedEventOption?) {
+        selectedSavedOptionID = option?.id
+
+        guard let option,
+              case let .food(food) = option.data
+        else {
+            selectedFood = nil
+            return
+        }
+
+        selectedFood = food
+    }
+
+    func canSave() -> Bool {
+        guard selectedFood != nil else {
+            return false
+        }
+
+        switch destination {
+        case .household:
+            return householdAmount > 0
+        case let .pets(ids):
+            return ids.contains { (petAmounts[$0] ?? 0) > 0 }
+        }
+    }
+
+    func makeEvents() -> [CareEvent] {
+        guard let selectedFood else {
+            return []
+        }
+
+        switch destination {
+        case .household:
+            guard householdAmount > 0 else {
+                return []
+            }
+
+            return [
+                CareEvent(
+                    type: .food,
+                    petID: nil,
+                    startTime: timestamp,
+                    data: .food(FoodEventData(
+                        name: selectedFood.name,
+                        foodType: selectedFood.foodType,
+                        amount: householdAmount,
+                        unit: selectedFood.unit,
+                        calories: calories(for: householdAmount)
+                    ))
+                )
+            ]
+
+        case .pets:
+            return MultiPetFoodEventFactory.makeEvents(
+                petAmounts: petAmounts,
+                food: selectedFood,
+                timestamp: timestamp
+            )
+        }
     }
 }
