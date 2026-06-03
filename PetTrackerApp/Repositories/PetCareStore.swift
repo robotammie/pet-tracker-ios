@@ -7,6 +7,11 @@ final class PetCareStore: ObservableObject {
     @Published var reminders: [Reminder]
     @Published var settings: UserSettings
 
+    private var petRepository: PetRepository?
+    private var eventRepository: CareEventRepository?
+    private var savedOptionRepository: SavedEventOptionRepository?
+    private var reminderRepository: ReminderRepository?
+
     init(
         pets: [Pet] = [],
         events: [CareEvent] = [],
@@ -19,6 +24,36 @@ final class PetCareStore: ObservableObject {
         self.savedOptions = savedOptions
         self.reminders = reminders
         self.settings = settings
+    }
+
+    func configurePersistence(
+        petRepository: PetRepository,
+        eventRepository: CareEventRepository,
+        savedOptionRepository: SavedEventOptionRepository,
+        reminderRepository: ReminderRepository
+    ) {
+        self.petRepository = petRepository
+        self.eventRepository = eventRepository
+        self.savedOptionRepository = savedOptionRepository
+        self.reminderRepository = reminderRepository
+    }
+
+    func refreshFromPersistence() {
+        if let petRepository {
+            pets = petRepository.listPets()
+        }
+
+        if let eventRepository {
+            events = eventRepository.listEvents()
+        }
+
+        if let savedOptionRepository {
+            savedOptions = savedOptionRepository.listSavedOptions(includeDeleted: true)
+        }
+
+        if let reminderRepository {
+            reminders = reminderRepository.listReminders(includeMuted: true)
+        }
     }
 
     func petName(for petID: UUID?) -> String {
@@ -77,6 +112,48 @@ final class PetCareStore: ObservableObject {
         return reminders
             .filter { $0.isActive && $0.dueAt <= tomorrow }
             .sorted { $0.dueAt < $1.dueAt }
+    }
+
+    func activeSavedOptions(for eventType: CareEventType) -> [SavedEventOption] {
+        savedOptions
+            .filter { $0.eventType == eventType && !$0.isDeleted }
+            .sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    func saveCareEventAndRefresh(_ event: CareEvent) {
+        if let eventRepository {
+            eventRepository.saveEvent(event)
+            refreshFromPersistence()
+        } else {
+            saveEvent(event)
+        }
+    }
+
+    func saveCareEventsAndRefresh(_ events: [CareEvent]) {
+        if let eventRepository {
+            events.forEach(eventRepository.saveEvent)
+            refreshFromPersistence()
+        } else {
+            events.forEach(saveEvent)
+        }
+    }
+
+    func saveSavedOptionAndRefresh(_ option: SavedEventOption) {
+        if let savedOptionRepository {
+            savedOptionRepository.saveSavedOption(option)
+            refreshFromPersistence()
+        } else {
+            saveSavedOption(option)
+        }
+    }
+
+    func softDeleteSavedOptionAndRefresh(id: UUID, at date: Date = .now) {
+        if let savedOptionRepository {
+            savedOptionRepository.softDeleteSavedOption(id: id, at: date)
+            refreshFromPersistence()
+        } else {
+            softDeleteSavedOption(id: id, at: date)
+        }
     }
 }
 

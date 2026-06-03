@@ -4,6 +4,7 @@ struct HomeView: View {
     @EnvironmentObject private var store: PetCareStore
     @State private var isDueExpanded = true
     @State private var isRecentExpanded = true
+    @State private var creationRoute: EventCreationRoute?
 
     var body: some View {
         List {
@@ -30,22 +31,26 @@ struct HomeView: View {
             }
         }
         .navigationTitle("Pet Tracker")
+        .sheet(item: $creationRoute) { route in
+            EventCreationSheet(route: route)
+                .environmentObject(store)
+        }
     }
 
     private var quickAddButtons: some View {
         HStack(spacing: 12) {
-            quickAddButton("Food", systemImage: "fork.knife")
-            quickAddButton("Medicine", systemImage: "pills")
-            quickAddButton("Litter", systemImage: "sparkles")
+            quickAddButton("Food", systemImage: "fork.knife", type: .food)
+            quickAddButton("Medicine", systemImage: "pills", type: .medicine)
+            quickAddButton("Litter", systemImage: "sparkles", type: .litter)
         }
         .buttonStyle(.bordered)
         .controlSize(.small)
         .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
     }
 
-    private func quickAddButton(_ title: String, systemImage: String) -> some View {
+    private func quickAddButton(_ title: String, systemImage: String, type: CareEventType) -> some View {
         Button {
-            // Stage 3 wires these into event creation flows.
+            creationRoute = .event(type)
         } label: {
             Label(title, systemImage: systemImage)
                 .frame(maxWidth: .infinity)

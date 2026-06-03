@@ -42,6 +42,39 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(store.listSavedOptions(includeDeleted: true).count, 1)
     }
 
+    func testActiveSavedOptionsAreScopedAndExcludeDeleted() {
+        let activeFood = SavedEventOption(
+            eventType: .food,
+            data: .food(SavedFoodData(
+                name: "Hills Dry",
+                unit: .cup,
+                caloriesPerUnit: 381,
+                foodType: .dry
+            ))
+        )
+        let deletedFood = SavedEventOption(
+            eventType: .food,
+            data: .food(SavedFoodData(
+                name: "Wet Food",
+                unit: .ounce,
+                caloriesPerUnit: 25,
+                foodType: .wet
+            )),
+            deletedAt: Date()
+        )
+        let medicine = SavedEventOption(
+            eventType: .medicine,
+            data: .medicine(SavedMedicineData(
+                name: "Meds",
+                dosage: 1,
+                unit: "tablet"
+            ))
+        )
+        let store = PetCareStore(savedOptions: [activeFood, deletedFood, medicine])
+
+        XCTAssertEqual(store.activeSavedOptions(for: .food), [activeFood])
+    }
+
     func testEventDeleteIsHardDelete() {
         let event = CareEvent(
             type: .litter,

@@ -37,6 +37,13 @@
 		AA0000000000000000000028 /* EventSummaryRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000029 /* EventSummaryRow.swift */; };
 		AA0000000000000000000029 /* ReminderSummaryRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000030 /* ReminderSummaryRow.swift */; };
 		AA0000000000000000000030 /* DateGrouping.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000031 /* DateGrouping.swift */; };
+		AA0000000000000000000031 /* EventCreationRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000032 /* EventCreationRoute.swift */; };
+		AA0000000000000000000032 /* EventCreationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000033 /* EventCreationSheet.swift */; };
+		AA0000000000000000000033 /* FoodEventFormViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000034 /* FoodEventFormViewModel.swift */; };
+		AA0000000000000000000034 /* MedicineEventFormViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000035 /* MedicineEventFormViewModel.swift */; };
+		AA0000000000000000000035 /* LitterEventFormViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000036 /* LitterEventFormViewModel.swift */; };
+		AA0000000000000000000036 /* SavedOptionFormViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000037 /* SavedOptionFormViewModel.swift */; };
+		AA0000000000000000000037 /* FoodEventFormViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000038 /* FoodEventFormViewModelTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -82,6 +89,13 @@
 		BB0000000000000000000029 /* EventSummaryRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedUI/EventSummaryRow.swift; sourceTree = "<group>"; };
 		BB0000000000000000000030 /* ReminderSummaryRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedUI/ReminderSummaryRow.swift; sourceTree = "<group>"; };
 		BB0000000000000000000031 /* DateGrouping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedUI/DateGrouping.swift; sourceTree = "<group>"; };
+		BB0000000000000000000032 /* EventCreationRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/EventCreation/EventCreationRoute.swift; sourceTree = "<group>"; };
+		BB0000000000000000000033 /* EventCreationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/EventCreation/EventCreationSheet.swift; sourceTree = "<group>"; };
+		BB0000000000000000000034 /* FoodEventFormViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/EventCreation/FoodEventFormViewModel.swift; sourceTree = "<group>"; };
+		BB0000000000000000000035 /* MedicineEventFormViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/EventCreation/MedicineEventFormViewModel.swift; sourceTree = "<group>"; };
+		BB0000000000000000000036 /* LitterEventFormViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/EventCreation/LitterEventFormViewModel.swift; sourceTree = "<group>"; };
+		BB0000000000000000000037 /* SavedOptionFormViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/EventCreation/SavedOptionFormViewModel.swift; sourceTree = "<group>"; };
+		BB0000000000000000000038 /* FoodEventFormViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodEventFormViewModelTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 		DD0000000000000000000001 /* PetTrackerApp */ = {
@@ -107,6 +121,12 @@
 				BB0000000000000000000030 /* ReminderSummaryRow.swift */,
 				BB0000000000000000000007 /* RelativeTimeText.swift */,
 				BB0000000000000000000031 /* DateGrouping.swift */,
+				BB0000000000000000000032 /* EventCreationRoute.swift */,
+				BB0000000000000000000033 /* EventCreationSheet.swift */,
+				BB0000000000000000000034 /* FoodEventFormViewModel.swift */,
+				BB0000000000000000000035 /* MedicineEventFormViewModel.swift */,
+				BB0000000000000000000036 /* LitterEventFormViewModel.swift */,
+				BB0000000000000000000037 /* SavedOptionFormViewModel.swift */,
 				BB0000000000000000000008 /* HomeView.swift */,
 				BB0000000000000000000009 /* EventListView.swift */,
 				BB0000000000000000000010 /* PetListView.swift */,
@@ -161,6 +181,7 @@
 				BB0000000000000000000018 /* ReminderSchedulerTests.swift */,
 				BB0000000000000000000019 /* RepositoryTests.swift */,
 				BB0000000000000000000025 /* SwiftDataPersistenceTests.swift */,
+				BB0000000000000000000038 /* FoodEventFormViewModelTests.swift */,
 			);
 			path = PetTrackerAppTests;
 			sourceTree = "<group>";
@@ -288,6 +309,12 @@
 				AA0000000000000000000029 /* ReminderSummaryRow.swift in Sources */,
 				AA0000000000000000000007 /* RelativeTimeText.swift in Sources */,
 				AA0000000000000000000030 /* DateGrouping.swift in Sources */,
+				AA0000000000000000000031 /* EventCreationRoute.swift in Sources */,
+				AA0000000000000000000032 /* EventCreationSheet.swift in Sources */,
+				AA0000000000000000000033 /* FoodEventFormViewModel.swift in Sources */,
+				AA0000000000000000000034 /* MedicineEventFormViewModel.swift in Sources */,
+				AA0000000000000000000035 /* LitterEventFormViewModel.swift in Sources */,
+				AA0000000000000000000036 /* SavedOptionFormViewModel.swift in Sources */,
 				AA0000000000000000000008 /* HomeView.swift in Sources */,
 				AA0000000000000000000009 /* EventListView.swift in Sources */,
 				AA0000000000000000000010 /* PetListView.swift in Sources */,
@@ -305,6 +332,7 @@
 				AA0000000000000000000018 /* ReminderSchedulerTests.swift in Sources */,
 				AA0000000000000000000019 /* RepositoryTests.swift in Sources */,
 				AA0000000000000000000024 /* SwiftDataPersistenceTests.swift in Sources */,
+				AA0000000000000000000037 /* FoodEventFormViewModelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

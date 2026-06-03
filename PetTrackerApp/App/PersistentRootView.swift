@@ -32,6 +32,13 @@ struct PersistentRootView: View {
         let savedOptionRepository = SwiftDataSavedEventOptionRepository(context: modelContext)
         let reminderRepository = SwiftDataReminderRepository(context: modelContext)
 
+        store.configurePersistence(
+            petRepository: petRepository,
+            eventRepository: eventRepository,
+            savedOptionRepository: savedOptionRepository,
+            reminderRepository: reminderRepository
+        )
+
         if petRepository.listPets().isEmpty {
             seedInitialData(
                 petRepository: petRepository,
@@ -41,10 +48,7 @@ struct PersistentRootView: View {
             )
         }
 
-        store.pets = petRepository.listPets()
-        store.events = eventRepository.listEvents()
-        store.savedOptions = savedOptionRepository.listSavedOptions(includeDeleted: true)
-        store.reminders = reminderRepository.listReminders(includeMuted: true)
+        store.refreshFromPersistence()
         store.settings = settingsRepository.loadSettings()
     }
 

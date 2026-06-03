@@ -287,7 +287,56 @@ Result: 15 tests passed.
 ## Stage 3: Event Creation and Saved Autofill Options
 Goal: support the core logging workflows.
 
+Food destination selection options:
+
+Option A: One creation form with a destination dropdown containing Household and each pet.
+
+Pros:
+- One consistent food logging flow.
+- Best match for shared meals where each cat gets a different amount.
+- Makes saved food selection and timestamp entry happen once.
+- Scales naturally to "Appa 2 cans, Tupo 1 can" without duplicate typing.
+- Mode is derived from the selection state instead of a separate control.
+- Selected pets can be toggled on/off directly.
+
+Cons:
+- More complex form state.
+- The destination dropdown needs custom multi-select behavior.
+- Standard SwiftUI menus may not provide enough room/clarity for selected-state highlighting.
+- Validation has to account for household-vs-pet selection state.
+
+Option B: Separate mode picker plus pet picker.
+
+Pros:
+- Easier to implement with standard controls.
+- Makes the mode explicit.
+- Validation is straightforward once the mode is chosen.
+
+Cons:
+- More taps and more concepts.
+- Duplicates information because selected pets already imply one-pet vs multi-pet.
+- More awkward when switching between one selected pet and several selected pets.
+
+Decision:
+- Use Option A for Stage 3: one food creation flow with a destination dropdown.
+- Household is mutually exclusive with pet selections.
+- Selecting Household clears selected pets.
+- Selecting a pet clears Household.
+- Selected pets are highlighted/checkmarked and can be tapped again to unselect.
+- Amount fields appear after a saved/specific food is selected.
+- Household shows one amount field.
+- One selected pet shows one amount field.
+- Multiple selected pets show one amount field per pet.
+- Saved food selection locks the unit and calories-per-unit.
+- Amount remains editable per event/per pet, and calories are calculated from amount x saved calories-per-unit.
+- Food event calories are not manually editable when using saved food data.
+
 Tasks:
+- [x] Pre-step: add write-through creation plumbing:
+    - repository-backed event/save-option write methods that update SwiftData and refresh in-memory state together
+    - shared creation sheet/navigation entry point launched by the Stage 2 quick add controls
+    - form view models for food, medicine, litter, and saved option editing
+    - active saved-option filtering helpers scoped by event type
 - Build shared event creation flow shell:
     - event type selection
     - timestamp defaulted to now
@@ -295,11 +344,14 @@ Tasks:
     - optional saved autofill selection
     - save/update saved option checkbox when edited/new data appears
 - Build food creation:
-    - no pet, one pet, or global event
+    - household, one-pet, or multi-pet mode in one form
     - saved food dropdown/new option
-    - amount input
+    - amount input for household/one-pet mode
+    - per-pet amount input for multi-pet mode
     - locked unit from saved food
-    - live calorie calculation
+    - locked calories-per-unit from saved food
+    - live calorie calculation from amount x calories-per-unit
+    - allow amounts like 2 cans/units for a single logged event
     - multi-pet same-food/time creation
     - ignore blank/zero amounts in multi-pet creation
 - Build medicine creation:
@@ -307,13 +359,14 @@ Tasks:
     - saved medicine dropdown/new option
     - dosage/unit required
     - multiple pets with per-pet dose, creating one event per pet
-    - option to autoqueue notifications when creating saved medicine data
 - Build litter creation:
     - one-tap/global cleaning event
     - no pet selection
+    - timestamp editable
 - Build saved option management:
     - list saved options by event type
     - add/edit options
+    - edit existing options in place for future use
     - soft delete options
 
 Mobile/UI concepts to explain while building:
@@ -322,17 +375,49 @@ Mobile/UI concepts to explain while building:
 - Input validation that helps without nagging.
 
 Acceptance checks:
+- Event and saved-option writes persist to SwiftData and update visible lists immediately.
 - Events can be created for all v1 event types.
 - Saved autofill options are scoped per event type.
+- Saved food units/calories-per-unit are locked during event creation.
+- Food event calories are calculated, not manually typed, when using saved food data.
 - Multi-pet food creation creates one event per cat with a nonzero amount.
 - Medicine multiple-pet creation creates one event per selected pet.
 - Soft-deleted saved options stop appearing in creation forms.
+
+Stage 3 pre-step notes:
+- Store write-through helpers:
+    - `saveCareEventAndRefresh`
+    - `saveCareEventsAndRefresh`
+    - `saveSavedOptionAndRefresh`
+    - `softDeleteSavedOptionAndRefresh`
+    - `activeSavedOptions(for:)`
+- SwiftData repositories are attached to `PetCareStore` during app startup in `PersistentRootView`.
+- Quick add buttons now open a shared creation sheet shell.
+- Event creation scaffolding:
+    - `PetTrackerApp/Features/EventCreation/EventCreationRoute.swift`
+    - `PetTrackerApp/Features/EventCreation/EventCreationSheet.swift`
+    - `PetTrackerApp/Features/EventCreation/FoodEventFormViewModel.swift`
+    - `PetTrackerApp/Features/EventCreation/MedicineEventFormViewModel.swift`
+    - `PetTrackerApp/Features/EventCreation/LitterEventFormViewModel.swift`
+    - `PetTrackerApp/Features/EventCreation/SavedOptionFormViewModel.swift`
+- Added tests for active saved option filtering and food destination selection behavior.
+- Verified with:
+
+```sh
+xcodebuild test -project PetTrackerApp.xcodeproj \
+  -scheme PetTrackerApp \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -derivedDataPath DerivedData
+```
+
+Result: 19 tests passed.
 
 ## Stage 4: Reminder and Notification Logic
 Goal: get reminder behavior correct before worrying about final notification polish.
 
 Tasks:
 - Implement reminder model and scheduling service.
+- Add option to autoqueue notifications/reminders when creating saved medicine data.
 - Support pure reminder vs reminder-to-event.
 - Support recurrence:
     - every N hours
