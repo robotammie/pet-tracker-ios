@@ -25,6 +25,7 @@ struct SavedOptionEditorView: View {
                 foodFields
             case .medicine:
                 medicineFields
+                reminderFields
             case .litter:
                 Text("Litter does not use saved options.")
                     .foregroundStyle(.secondary)
@@ -50,6 +51,9 @@ struct SavedOptionEditorView: View {
                     }
 
                     store.saveSavedOptionAndRefresh(savedOption)
+                    if option == nil, let reminder = viewModel.makeAutoqueuedReminder() {
+                        store.saveReminderAndRefresh(reminder)
+                    }
                     dismiss()
                 }
                 .disabled(!viewModel.canSave())
@@ -89,6 +93,40 @@ struct SavedOptionEditorView: View {
 
             TextField("Unit", text: $viewModel.medicineUnit)
         }
+    }
+
+    private var reminderFields: some View {
+        Section("Reminder") {
+            Toggle("Autoqueue notification", isOn: $viewModel.shouldAutoqueueReminder)
+
+            if viewModel.shouldAutoqueueReminder {
+                Picker("Mode", selection: $viewModel.reminderMode) {
+                    ForEach(ReminderMode.allCases) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
+                }
+
+                DatePicker("First due", selection: $viewModel.reminderDueAt)
+
+                PetSelectionSection(
+                    pets: store.pets,
+                    selectedPetIDs: viewModel.reminderPetIDs,
+                    title: reminderPetTitle,
+                    togglePet: viewModel.toggleReminderPet
+                )
+
+                Text("Repeats every day. More schedule controls will come in the reminder editor.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var reminderPetTitle: String {
+        EventCreationSelectionText.petNames(
+            selectedPetIDs: viewModel.reminderPetIDs,
+            pets: store.pets
+        )
     }
 }
 

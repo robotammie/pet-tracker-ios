@@ -86,4 +86,21 @@ final class ReminderSchedulerTests: XCTestCase {
 
         XCTAssertNil(next)
     }
+
+    func testDayOnlyReminderIsOverdueAfterDueDayEnds() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let dueDay = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 6, day: 1, hour: 9)))
+        let sameDayEvening = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 6, day: 1, hour: 23)))
+        let nextDay = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 6, day: 2)))
+        let reminder = Reminder(
+            title: "Clean fountain",
+            mode: .pureReminder,
+            eventType: nil,
+            dueAt: dueDay,
+            dueStyle: .dayOnly
+        )
+
+        XCTAssertFalse(reminder.isOverdue(now: sameDayEvening, calendar: calendar))
+        XCTAssertTrue(reminder.isOverdue(now: nextDay, calendar: calendar))
+    }
 }

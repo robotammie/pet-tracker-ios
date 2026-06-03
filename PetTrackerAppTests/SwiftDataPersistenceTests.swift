@@ -103,6 +103,58 @@ final class SwiftDataPersistenceTests: XCTestCase {
         XCTAssertEqual(saved?.eventData, reminder.eventData)
     }
 
+    func testReminderRepositoryPersistsMultiPetTargets() throws {
+        let context = try makeContext()
+        let repository = SwiftDataReminderRepository(context: context)
+        let appaID = UUID()
+        let momoID = UUID()
+        let reminder = Reminder(
+            title: "Dinner",
+            mode: .reminderToEvent,
+            eventType: .food,
+            eventData: .food(FoodEventData(
+                name: "Wet Food",
+                foodType: .wet,
+                amount: 1,
+                unit: .ounce,
+                calories: 30
+            )),
+            dueAt: Date(),
+            dueStyle: .timestamp,
+            targets: [
+                ReminderTarget(
+                    petID: appaID,
+                    eventData: .food(FoodEventData(
+                        name: "Wet Food",
+                        foodType: .wet,
+                        amount: 2,
+                        unit: .ounce,
+                        calories: 60
+                    ))
+                ),
+                ReminderTarget(
+                    petID: momoID,
+                    eventData: .food(FoodEventData(
+                        name: "Wet Food",
+                        foodType: .wet,
+                        amount: 1,
+                        unit: .ounce,
+                        calories: 30
+                    )),
+                    completedAt: Date()
+                )
+            ]
+        )
+
+        repository.saveReminder(reminder)
+
+        let saved = try XCTUnwrap(repository.listReminders().first)
+        XCTAssertEqual(saved.targets.count, 2)
+        XCTAssertEqual(saved.targets.first?.petID, appaID)
+        XCTAssertEqual(saved.targets.first?.eventData, reminder.targets.first?.eventData)
+        XCTAssertNotNil(saved.targets.last?.completedAt)
+    }
+
     private func makeContext() throws -> ModelContext {
         let schema = Schema([
             PetRecord.self,

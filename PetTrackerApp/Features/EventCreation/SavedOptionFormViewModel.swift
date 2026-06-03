@@ -8,6 +8,10 @@ final class SavedOptionFormViewModel: ObservableObject {
     @Published var caloriesPerUnit: Int
     @Published var dosage: Double
     @Published var medicineUnit: String
+    @Published var shouldAutoqueueReminder = false
+    @Published var reminderPetIDs: Set<UUID> = []
+    @Published var reminderDueAt: Date = .now
+    @Published var reminderMode: ReminderMode = .reminderToEvent
 
     init(option: SavedEventOption? = nil, eventType: CareEventType = .food) {
         self.eventType = option?.eventType ?? eventType
@@ -32,6 +36,14 @@ final class SavedOptionFormViewModel: ObservableObject {
             name = data.name
             dosage = data.dosage
             medicineUnit = data.unit
+        }
+    }
+
+    func toggleReminderPet(_ petID: UUID) {
+        if reminderPetIDs.contains(petID) {
+            reminderPetIDs.remove(petID)
+        } else {
+            reminderPetIDs.insert(petID)
         }
     }
 
@@ -69,7 +81,8 @@ final class SavedOptionFormViewModel: ObservableObject {
             data = .medicine(SavedMedicineData(
                 name: name,
                 dosage: dosage,
-                unit: medicineUnit
+                unit: medicineUnit,
+                cadence: MedicineCadence(rule: .every(value: 1, unit: .day))
             ))
         case .litter:
             return nil
@@ -82,6 +95,35 @@ final class SavedOptionFormViewModel: ObservableObject {
             createdAt: option?.createdAt ?? date,
             updatedAt: date,
             deletedAt: option?.deletedAt
+        )
+    }
+
+    func makeAutoqueuedReminder(at date: Date = .now) -> Reminder? {
+        guard shouldAutoqueueReminder,
+              eventType == .medicine,
+              canSave(),
+              !reminderPetIDs.isEmpty
+        else {
+            return nil
+        }
+
+        let medicine = MedicineEventData(name: name, dosage: dosage, unit: medicineUnit)
+        let targets = reminderPetIDs.map { petID in
+            ReminderTarget(petID: petID, eventData: .medicine(medicine))
+        }
+
+        return Reminder(
+            title: name,
+            mode: reminderMode,
+            eventType: .medicine,
+            eventData: .medicine(medicine),
+            dueAt: reminderDueAt,
+            dueStyle: .timestamp,
+            schedule: ReminderSchedule(
+                recurrenceRule: .every(value: 1, unit: .day),
+                endDate: nil
+            ),
+            targets: targets
         )
     }
 }

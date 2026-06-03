@@ -12,7 +12,7 @@ struct Pet: Identifiable, Hashable {
     }
 }
 
-enum CareEventType: String, CaseIterable, Identifiable {
+enum CareEventType: String, CaseIterable, Identifiable, Codable {
     case food = "Food"
     case litter = "Litter"
     case medicine = "Medicine"
@@ -20,7 +20,7 @@ enum CareEventType: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-enum FoodType: String, CaseIterable, Identifiable {
+enum FoodType: String, CaseIterable, Identifiable, Codable {
     case wet = "Wet"
     case dry = "Dry"
     case treat = "Treat"
@@ -28,14 +28,14 @@ enum FoodType: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-enum FoodUnit: String, CaseIterable, Identifiable {
+enum FoodUnit: String, CaseIterable, Identifiable, Codable {
     case cup = "cup"
     case ounce = "oz"
 
     var id: String { rawValue }
 }
 
-struct FoodEventData: Hashable {
+struct FoodEventData: Hashable, Codable {
     var name: String
     var foodType: FoodType
     var amount: Double
@@ -51,9 +51,9 @@ struct FoodEventData: Hashable {
     }
 }
 
-struct LitterEventData: Hashable {}
+struct LitterEventData: Hashable, Codable {}
 
-struct MedicineEventData: Hashable {
+struct MedicineEventData: Hashable, Codable {
     var name: String
     var dosage: Double
     var unit: String
@@ -65,7 +65,7 @@ struct MedicineEventData: Hashable {
     }
 }
 
-enum CareEventData: Hashable {
+enum CareEventData: Hashable, Codable {
     case food(FoodEventData)
     case litter(LitterEventData)
     case medicine(MedicineEventData)
@@ -206,6 +206,20 @@ struct ReminderSchedule: Hashable {
     var endDate: Date?
 }
 
+struct ReminderTarget: Identifiable, Hashable, Codable {
+    var petID: UUID
+    var eventData: CareEventData?
+    var completedAt: Date?
+
+    var id: UUID { petID }
+
+    init(petID: UUID, eventData: CareEventData? = nil, completedAt: Date? = nil) {
+        self.petID = petID
+        self.eventData = eventData
+        self.completedAt = completedAt
+    }
+}
+
 struct Reminder: Identifiable, Hashable {
     let id: UUID
     var title: String
@@ -217,9 +231,40 @@ struct Reminder: Identifiable, Hashable {
     var dueStyle: ReminderDueStyle
     var status: ReminderStatus
     var schedule: ReminderSchedule?
+    var targets: [ReminderTarget]
+    var completedAt: Date?
 
     var isActive: Bool {
         status == .active
+    }
+
+    var isRecurring: Bool {
+        schedule?.recurrenceRule != nil
+    }
+
+    var incompleteTargets: [ReminderTarget] {
+        targets.filter { $0.completedAt == nil }
+    }
+
+    var isFullyComplete: Bool {
+        if targets.isEmpty {
+            return status == .completed
+        }
+
+        return incompleteTargets.isEmpty
+    }
+
+    func isOverdue(now: Date = .now, calendar: Calendar = .current) -> Bool {
+        switch dueStyle {
+        case .timestamp:
+            return dueAt < now
+        case .dayOnly:
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: dueAt)) else {
+                return dueAt < now
+            }
+
+            return nextDay <= now
+        }
     }
 
     init(
@@ -232,7 +277,9 @@ struct Reminder: Identifiable, Hashable {
         dueAt: Date,
         dueStyle: ReminderDueStyle,
         status: ReminderStatus = .active,
-        schedule: ReminderSchedule? = nil
+        schedule: ReminderSchedule? = nil,
+        targets: [ReminderTarget] = [],
+        completedAt: Date? = nil
     ) {
         self.id = id
         self.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -244,6 +291,12 @@ struct Reminder: Identifiable, Hashable {
         self.dueStyle = dueStyle
         self.status = status
         self.schedule = schedule
+        if targets.isEmpty, let eventPetID {
+            self.targets = [ReminderTarget(petID: eventPetID, eventData: eventData)]
+        } else {
+            self.targets = targets
+        }
+        self.completedAt = completedAt
     }
 }
 

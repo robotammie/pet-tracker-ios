@@ -52,6 +52,10 @@
 		AA0000000000000000000043 /* MedicineEventFormViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000044 /* MedicineEventFormViewModelTests.swift */; };
 		AA0000000000000000000044 /* SavedOptionFormViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000045 /* SavedOptionFormViewModelTests.swift */; };
 		AA0000000000000000000045 /* EventCreationFormSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000046 /* EventCreationFormSections.swift */; };
+		AA0000000000000000000046 /* ReminderActionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000047 /* ReminderActionService.swift */; };
+		AA0000000000000000000047 /* LocalNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000048 /* LocalNotificationService.swift */; };
+		AA0000000000000000000048 /* ReminderActionServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000049 /* ReminderActionServiceTests.swift */; };
+		AA0000000000000000000049 /* LocalNotificationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000050 /* LocalNotificationServiceTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -112,6 +116,10 @@
 		BB0000000000000000000044 /* MedicineEventFormViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicineEventFormViewModelTests.swift; sourceTree = "<group>"; };
 		BB0000000000000000000045 /* SavedOptionFormViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedOptionFormViewModelTests.swift; sourceTree = "<group>"; };
 		BB0000000000000000000046 /* EventCreationFormSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/EventCreation/EventCreationFormSections.swift; sourceTree = "<group>"; };
+		BB0000000000000000000047 /* ReminderActionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/ReminderActionService.swift; sourceTree = "<group>"; };
+		BB0000000000000000000048 /* LocalNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/LocalNotificationService.swift; sourceTree = "<group>"; };
+		BB0000000000000000000049 /* ReminderActionServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderActionServiceTests.swift; sourceTree = "<group>"; };
+		BB0000000000000000000050 /* LocalNotificationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNotificationServiceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 		DD0000000000000000000001 /* PetTrackerApp */ = {
@@ -132,6 +140,8 @@
 				BB0000000000000000000027 /* SeedData.swift */,
 				BB0000000000000000000028 /* SeedData.local.swift */,
 				BB0000000000000000000015 /* ReminderScheduler.swift */,
+				BB0000000000000000000047 /* ReminderActionService.swift */,
+				BB0000000000000000000048 /* LocalNotificationService.swift */,
 				BB0000000000000000000006 /* EventSummaryText.swift */,
 				BB0000000000000000000029 /* EventSummaryRow.swift */,
 				BB0000000000000000000030 /* ReminderSummaryRow.swift */,
@@ -206,6 +216,8 @@
 				BB0000000000000000000038 /* FoodEventFormViewModelTests.swift */,
 				BB0000000000000000000044 /* MedicineEventFormViewModelTests.swift */,
 				BB0000000000000000000045 /* SavedOptionFormViewModelTests.swift */,
+				BB0000000000000000000049 /* ReminderActionServiceTests.swift */,
+				BB0000000000000000000050 /* LocalNotificationServiceTests.swift */,
 			);
 			path = PetTrackerAppTests;
 			sourceTree = "<group>";
@@ -328,6 +340,8 @@
 				AA0000000000000000000026 /* SeedData.swift in Sources */,
 				AA0000000000000000000027 /* SeedData.local.swift in Sources */,
 				AA0000000000000000000015 /* ReminderScheduler.swift in Sources */,
+				AA0000000000000000000046 /* ReminderActionService.swift in Sources */,
+				AA0000000000000000000047 /* LocalNotificationService.swift in Sources */,
 				AA0000000000000000000006 /* EventSummaryText.swift in Sources */,
 				AA0000000000000000000028 /* EventSummaryRow.swift in Sources */,
 				AA0000000000000000000029 /* ReminderSummaryRow.swift in Sources */,
@@ -365,6 +379,8 @@
 				AA0000000000000000000037 /* FoodEventFormViewModelTests.swift in Sources */,
 				AA0000000000000000000043 /* MedicineEventFormViewModelTests.swift in Sources */,
 				AA0000000000000000000044 /* SavedOptionFormViewModelTests.swift in Sources */,
+				AA0000000000000000000048 /* ReminderActionServiceTests.swift in Sources */,
+				AA0000000000000000000049 /* LocalNotificationServiceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

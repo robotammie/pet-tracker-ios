@@ -147,6 +147,66 @@ final class PetCareStore: ObservableObject {
         }
     }
 
+    func saveReminderAndRefresh(_ reminder: Reminder) {
+        if let reminderRepository {
+            reminderRepository.saveReminder(reminder)
+            refreshFromPersistence()
+        } else {
+            saveReminder(reminder)
+        }
+
+        syncLocalNotifications()
+    }
+
+    func completeReminderAndRefresh(
+        _ reminder: Reminder,
+        completedPetIDs: Set<UUID>,
+        completionTime: Date,
+        createsEvent: Bool
+    ) {
+        let result = ReminderActionService.complete(
+            reminder,
+            completedPetIDs: completedPetIDs,
+            completionTime: completionTime,
+            createsEvent: createsEvent
+        )
+
+        result.events.forEach { event in
+            if let eventRepository {
+                eventRepository.saveEvent(event)
+            } else {
+                saveEvent(event)
+            }
+        }
+
+        if let reminderRepository {
+            reminderRepository.saveReminder(result.updatedReminder)
+            if let historyReminder = result.historyReminder {
+                reminderRepository.saveReminder(historyReminder)
+            }
+            refreshFromPersistence()
+        } else {
+            saveReminder(result.updatedReminder)
+            if let historyReminder = result.historyReminder {
+                saveReminder(historyReminder)
+            }
+        }
+
+        syncLocalNotifications()
+    }
+
+    func ignoreReminderAndRefresh(
+        _ reminder: Reminder,
+        until ignoreUntil: Date,
+        updateFutureNotifications: Bool
+    ) {
+        saveReminderAndRefresh(ReminderActionService.ignore(
+            reminder,
+            until: ignoreUntil,
+            updateFutureNotifications: updateFutureNotifications
+        ))
+    }
+
     func softDeleteSavedOptionAndRefresh(id: UUID, at date: Date = .now) {
         if let savedOptionRepository {
             savedOptionRepository.softDeleteSavedOption(id: id, at: date)
@@ -154,6 +214,32 @@ final class PetCareStore: ObservableObject {
         } else {
             softDeleteSavedOption(id: id, at: date)
         }
+    }
+
+    func muteReminderAndRefresh(id: UUID) {
+        if let reminderRepository {
+            reminderRepository.muteReminder(id: id)
+            refreshFromPersistence()
+        } else {
+            muteReminder(id: id)
+        }
+
+        syncLocalNotifications()
+    }
+
+    func deleteReminderAndRefresh(id: UUID) {
+        if let reminderRepository {
+            reminderRepository.deleteReminder(id: id)
+            refreshFromPersistence()
+        } else {
+            deleteReminder(id: id)
+        }
+
+        syncLocalNotifications()
+    }
+
+    func syncLocalNotifications() {
+        LocalNotificationService.sync(reminders: reminders, settings: settings)
     }
 }
 

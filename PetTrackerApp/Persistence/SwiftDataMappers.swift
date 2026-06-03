@@ -207,7 +207,9 @@ enum SwiftDataMapper {
             dueAt: record.dueAt,
             dueStyle: dueStyle,
             status: status,
-            schedule: reminderSchedule(from: record)
+            schedule: reminderSchedule(from: record),
+            targets: reminderTargets(from: record),
+            completedAt: record.completedAt
         )
     }
 
@@ -219,6 +221,8 @@ enum SwiftDataMapper {
         record.dueAt = reminder.dueAt
         record.dueStyleRawValue = reminder.dueStyle.rawValue
         record.statusRawValue = reminder.status.rawValue
+        record.targetsJSON = encodeReminderTargets(reminder.targets)
+        record.completedAt = reminder.completedAt
 
         record.foodName = nil
         record.foodTypeRawValue = nil
@@ -283,6 +287,18 @@ enum SwiftDataMapper {
                 unit: unit
             ))
         }
+    }
+
+    private static func reminderTargets(from record: ReminderRecord) -> [ReminderTarget] {
+        guard let targets = decodeReminderTargets(record.targetsJSON) else {
+            if let eventPetID = record.eventPetID {
+                return [ReminderTarget(petID: eventPetID, eventData: reminderEventData(from: record))]
+            }
+
+            return []
+        }
+
+        return targets
     }
 
     private static func reminderSchedule(from record: ReminderRecord) -> ReminderSchedule? {
@@ -411,5 +427,25 @@ enum SwiftDataMapper {
         value?
             .split(separator: ",")
             .compactMap { Int($0) } ?? []
+    }
+
+    private static func encodeReminderTargets(_ targets: [ReminderTarget]) -> String? {
+        guard !targets.isEmpty,
+              let data = try? JSONEncoder().encode(targets)
+        else {
+            return nil
+        }
+
+        return String(data: data, encoding: .utf8)
+    }
+
+    private static func decodeReminderTargets(_ value: String?) -> [ReminderTarget]? {
+        guard let value,
+              let data = value.data(using: .utf8)
+        else {
+            return nil
+        }
+
+        return try? JSONDecoder().decode([ReminderTarget].self, from: data)
     }
 }

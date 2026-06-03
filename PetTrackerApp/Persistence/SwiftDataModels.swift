@@ -96,6 +96,8 @@ final class ReminderRecord {
     var dueAt: Date
     var dueStyleRawValue: String
     var statusRawValue: String
+    var targetsJSON: String?
+    var completedAt: Date?
 
     var foodName: String?
     var foodTypeRawValue: String?

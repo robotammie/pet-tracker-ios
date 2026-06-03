@@ -2,7 +2,7 @@
 
 Pet Tracker is a personal iOS app for tracking cat care events, reminders, saved autofill data, and notification-driven care routines.
 
-The app is in early implementation. Stages 0 through 3 are complete: the SwiftUI project shell exists, builds for the iOS Simulator, launches with sample data, persists locally with SwiftData, and supports core event creation plus saved food/medicine options.
+The app is in early implementation. Stages 0 through 4 are complete: the SwiftUI project shell exists, builds for the iOS Simulator, launches with sample data, persists locally with SwiftData, supports core event creation plus saved food/medicine options, and has reminder completion/ignore behavior with best-effort local notifications.
 
 ## Project Goals
 
@@ -63,9 +63,15 @@ Implemented so far:
 - Litter creation with editable timestamp.
 - Saved food and medicine option management from Settings, including soft delete.
 - Settings screen for notification preferences.
-- Unit tests for validation, calorie calculation, recurrence scheduling, hard delete, soft delete, and reminder mute behavior.
+- Reminder completion, ignore-until, mute, and delete actions.
+- Multi-pet reminder completion with per-pet completion state.
+- Reminder-to-event completion that logs care events.
+- Completed reminder history in the Reminders tab.
+- Best-effort iOS local notification scheduling for active reminders.
+- Saved medicine autoqueue for daily reminders.
+- Unit tests for validation, calorie calculation, recurrence scheduling, hard delete, soft delete, reminder mute behavior, multi-pet reminder completion, and reminder persistence.
 
-The app now has local persistence and core event creation. There is no notification scheduling UI or iCloud sync yet.
+The app now has local persistence, core event creation, reminder actions, and local notification scheduling. There is no iCloud sync yet.
 
 ## Setup and Run
 

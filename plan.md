@@ -458,30 +458,33 @@ xcodebuild test -project PetTrackerApp.xcodeproj \
 
 Result: 25 tests passed.
 
-## Stage 4: Reminder and Notification Logic
+## Stage 4: Reminder and Notification Logic - Complete
 Goal: get reminder behavior correct before worrying about final notification polish.
 
 Tasks:
-- Implement reminder model and scheduling service.
-- Add option to autoqueue notifications/reminders when creating saved medicine data.
-- Support pure reminder vs reminder-to-event.
-- Support recurrence:
+- [x] Implement reminder model and scheduling service.
+- [x] Add option to autoqueue notifications/reminders when creating saved medicine data.
+- [x] Support pure reminder vs reminder-to-event.
+- [x] Support recurrence:
     - every N hours
     - every N days
     - every N weeks
     - every N months
     - N times per day with suggested editable default times
-- Support timestamp vs day-only due style.
-- Use global default day-only display time, defaulting to 9:00 AM.
-- Keep overdue reminders visible until completed, ignored, or deleted.
-- Add ignore-until behavior.
-- Add completion flow:
+- [x] Support timestamp vs day-only due style.
+- [x] Use global default day-only display time, defaulting to 9:00 AM.
+- [x] Keep overdue reminders visible until completed, ignored, muted, or deleted.
+- [x] Add ignore-until behavior.
+- [x] Add completion flow:
     - completion time defaults to now
     - user may edit completion time
     - recurring next due time is based on completion time
     - reminder-to-event completion can create/log the event
-- Support optional schedule end date.
-- Stop medicine reminders automatically at schedule end date.
+- [x] Support optional schedule end date.
+- [x] Stop medicine reminders automatically at schedule end date.
+- [x] Add multi-pet reminder groups with per-pet completion state.
+- [x] Keep a completed history entry for recurring reminders while scheduling the next active occurrence.
+- [x] Add best-effort iOS local notification scheduling for active reminders.
 
 Mobile concepts to explain while building:
 - Local notifications on iOS.
@@ -489,10 +492,33 @@ Mobile concepts to explain while building:
 - Why scheduling and visible reminder state are related but not identical.
 
 Acceptance checks:
-- Reminder next-due tests cover normal, late, and edited-completion cases.
-- Day-only reminders show starting at configured morning time and become overdue after midnight.
-- Ignored reminders update due date and leave history intact as needed.
-- Reminder-to-event completion creates the expected care event.
+- [x] Reminder next-due tests cover normal, late, and edited-completion cases.
+- [x] Day-only reminders schedule at the configured morning time.
+- [x] Ignored reminders update due date and leave history intact as needed.
+- [x] Reminder-to-event completion creates the expected care event.
+- [x] Partial multi-pet completion keeps the reminder active until all pets are complete.
+- [x] Multi-pet reminder target data persists locally.
+
+Stage 4 notes:
+- Multi-pet reminders use one reminder with per-pet target completion state.
+- Completing selected pets logs only those pets' events for reminder-to-event reminders.
+- Recurring reminders create a completed history copy and keep the original reminder active with the next due date.
+- Ignore Until includes quick presets, custom date/time, and an Update Future Notifications toggle for recurring reminders.
+- Completed reminders appear in an auto-collapsed Completed section in the Reminders tab.
+- Local notification scheduling is best-effort and syncs pending iOS notifications from active reminders.
+- Saved medicine creation can optionally autoqueue a daily reminder for selected pets.
+- Tests:
+    - `PetTrackerAppTests/ReminderActionServiceTests.swift`
+    - `PetTrackerAppTests/ReminderSchedulerTests.swift`
+    - `PetTrackerAppTests/SwiftDataPersistenceTests.swift`
+- Verified with:
+
+```sh
+scripts/build-for-testing.sh
+scripts/test-without-building.sh
+```
+
+Result: 30 tests passed.
 
 ## Stage 5: Settings
 Goal: expose the small set of v1 settings without turning settings into a junk drawer.

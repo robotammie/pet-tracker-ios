@@ -16,6 +16,7 @@ struct PersistentRootView: View {
             }
             .onChange(of: store.settings) { _, settings in
                 settingsRepository.saveSettings(settings)
+                store.syncLocalNotifications()
             }
     }
 
@@ -50,6 +51,8 @@ struct PersistentRootView: View {
 
         store.refreshFromPersistence()
         store.settings = settingsRepository.loadSettings()
+        LocalNotificationService.requestAuthorization()
+        store.syncLocalNotifications()
     }
 
     private func seedInitialData(
