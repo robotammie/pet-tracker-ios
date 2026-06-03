@@ -7,9 +7,17 @@ struct FoodEventCreationView: View {
 
     var body: some View {
         Form {
-            Section("When") {
-                DatePicker("Time", selection: $viewModel.timestamp)
-            }
+            EventTimestampSection(timestamp: $viewModel.timestamp)
+
+            PetSelectionSection(
+                pets: store.pets,
+                selectedPetIDs: viewModel.selectedPetIDs,
+                title: destinationTitle,
+                includesHousehold: true,
+                isHouseholdSelected: viewModel.isHouseholdSelected,
+                togglePet: viewModel.togglePet,
+                selectHousehold: viewModel.selectHousehold
+            )
 
             Section("Food") {
                 Picker("Saved food", selection: $viewModel.selectedSavedOptionID) {
@@ -24,31 +32,7 @@ struct FoodEventCreationView: View {
                 }
 
                 if let food = viewModel.selectedFood {
-                    LabeledContent("Unit", value: food.unit.rawValue)
                     LabeledContent("Calories per \(food.unit.rawValue)", value: "\(food.caloriesPerUnit)")
-                }
-            }
-
-            Section("For") {
-                Menu {
-                    Button {
-                        viewModel.selectHousehold()
-                    } label: {
-                        Label("Household", systemImage: viewModel.isHouseholdSelected ? "checkmark" : "house")
-                    }
-
-                    ForEach(store.pets) { pet in
-                        Button {
-                            viewModel.togglePet(pet.id)
-                        } label: {
-                            Label(
-                                pet.name,
-                                systemImage: viewModel.selectedPetIDs.contains(pet.id) ? "checkmark" : "cat"
-                            )
-                        }
-                    }
-                } label: {
-                    Label(destinationTitle, systemImage: "person.2")
                 }
             }
 
@@ -87,9 +71,10 @@ struct FoodEventCreationView: View {
     }
 
     private var selectedPets: [Pet] {
-        store.pets
-            .filter { viewModel.selectedPetIDs.contains($0.id) }
-            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        EventCreationSelectionText.sortedSelectedPets(
+            selectedPetIDs: viewModel.selectedPetIDs,
+            pets: store.pets
+        )
     }
 
     private var destinationTitle: String {
@@ -97,8 +82,10 @@ struct FoodEventCreationView: View {
             return "Household"
         }
 
-        let names = selectedPets.map(\.name)
-        return names.isEmpty ? "Choose pets" : names.joined(separator: ", ")
+        return EventCreationSelectionText.petNames(
+            selectedPetIDs: viewModel.selectedPetIDs,
+            pets: store.pets
+        )
     }
 
     private func amountBinding(for petID: UUID) -> Binding<Double> {
@@ -117,19 +104,27 @@ struct FoodEventCreationView: View {
     }
 
     private func amountRow(_ title: String, amount: Binding<Double>) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(title)
-                Spacer()
-                TextField("Amount", value: amount, format: .number)
-                    .multilineTextAlignment(.trailing)
-                    .keyboardType(.decimalPad)
-            }
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+
+            Spacer()
 
             if let food = viewModel.selectedFood {
-                Text("\(viewModel.calories(for: amount.wrappedValue)) cal, \(food.unit.rawValue)")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .trailing, spacing: 4) {
+                    HStack(spacing: 4) {
+                        TextField("Amount", value: amount, format: .number)
+                            .multilineTextAlignment(.trailing)
+                            .keyboardType(.decimalPad)
+                            .frame(maxWidth: 90)
+
+                        Text(food.unit.rawValue)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Text("\(viewModel.calories(for: amount.wrappedValue)) cal")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }

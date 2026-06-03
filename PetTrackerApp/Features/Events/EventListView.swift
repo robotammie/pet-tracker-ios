@@ -4,6 +4,10 @@ struct EventListView: View {
     @EnvironmentObject private var store: PetCareStore
     @State private var selectedType = CareEventType.food
 
+    init(initialSelectedType: CareEventType = .food) {
+        _selectedType = State(initialValue: initialSelectedType)
+    }
+
     private var filteredEvents: [CareEvent] {
         store.events
             .filter { $0.type == selectedType }

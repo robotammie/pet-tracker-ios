@@ -3,28 +3,34 @@ import SwiftUI
 struct ReminderSummaryRow: View {
     let reminder: Reminder
     var now: Date = .now
+    var showsEventIcon = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(reminder.title)
-                    .font(.headline)
-                Spacer()
-                statusText
+        HStack(alignment: .top, spacing: 12) {
+            if showsEventIcon, let eventType = reminder.eventType {
+                Image(systemName: eventType.homeSystemImage)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24)
             }
 
-            HStack(spacing: 6) {
-                Text(reminder.mode.rawValue)
-                if let eventType = reminder.eventType {
-                    Text(eventType.rawValue)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(reminder.title)
+                        .font(.headline)
+                    Spacer()
+                    statusText
                 }
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
 
-            Text(reminder.dueAt, style: .date)
-                + Text(" at ")
-                + Text(reminder.dueAt, style: .time)
+                HStack(spacing: 6) {
+                    Text(reminder.mode.rawValue)
+                    if let eventType = reminder.eventType {
+                        Text(eventType.rawValue)
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            }
         }
         .padding(.vertical, 2)
     }
@@ -32,10 +38,11 @@ struct ReminderSummaryRow: View {
     private var statusText: some View {
         Group {
             if reminder.dueAt < now {
-                Text("Overdue")
+                RelativeTimeText(date: reminder.dueAt)
                     .foregroundStyle(.red)
             } else {
                 RelativeTimeText(date: reminder.dueAt)
+                    .foregroundStyle(.secondary)
             }
         }
         .font(.caption.weight(.medium))

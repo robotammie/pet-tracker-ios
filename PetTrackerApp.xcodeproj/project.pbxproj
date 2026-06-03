@@ -51,6 +51,7 @@
 		AA0000000000000000000042 /* SavedOptionEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000043 /* SavedOptionEditorView.swift */; };
 		AA0000000000000000000043 /* MedicineEventFormViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000044 /* MedicineEventFormViewModelTests.swift */; };
 		AA0000000000000000000044 /* SavedOptionFormViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000045 /* SavedOptionFormViewModelTests.swift */; };
+		AA0000000000000000000045 /* EventCreationFormSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000046 /* EventCreationFormSections.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -110,6 +111,7 @@
 		BB0000000000000000000043 /* SavedOptionEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/EventCreation/SavedOptionEditorView.swift; sourceTree = "<group>"; };
 		BB0000000000000000000044 /* MedicineEventFormViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicineEventFormViewModelTests.swift; sourceTree = "<group>"; };
 		BB0000000000000000000045 /* SavedOptionFormViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedOptionFormViewModelTests.swift; sourceTree = "<group>"; };
+		BB0000000000000000000046 /* EventCreationFormSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/EventCreation/EventCreationFormSections.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 		DD0000000000000000000001 /* PetTrackerApp */ = {
@@ -141,6 +143,7 @@
 				BB0000000000000000000035 /* MedicineEventFormViewModel.swift */,
 				BB0000000000000000000036 /* LitterEventFormViewModel.swift */,
 				BB0000000000000000000037 /* SavedOptionFormViewModel.swift */,
+				BB0000000000000000000046 /* EventCreationFormSections.swift */,
 				BB0000000000000000000039 /* FoodEventCreationView.swift */,
 				BB0000000000000000000040 /* MedicineEventCreationView.swift */,
 				BB0000000000000000000041 /* LitterEventCreationView.swift */,
@@ -336,6 +339,7 @@
 				AA0000000000000000000034 /* MedicineEventFormViewModel.swift in Sources */,
 				AA0000000000000000000035 /* LitterEventFormViewModel.swift in Sources */,
 				AA0000000000000000000036 /* SavedOptionFormViewModel.swift in Sources */,
+				AA0000000000000000000045 /* EventCreationFormSections.swift in Sources */,
 				AA0000000000000000000038 /* FoodEventCreationView.swift in Sources */,
 				AA0000000000000000000039 /* MedicineEventCreationView.swift in Sources */,
 				AA0000000000000000000040 /* LitterEventCreationView.swift in Sources */,

@@ -7,9 +7,14 @@ struct MedicineEventCreationView: View {
 
     var body: some View {
         Form {
-            Section("When") {
-                DatePicker("Time", selection: $viewModel.timestamp)
-            }
+            EventTimestampSection(timestamp: $viewModel.timestamp)
+
+            PetSelectionSection(
+                pets: store.pets,
+                selectedPetIDs: viewModel.selectedPetIDs,
+                title: destinationTitle,
+                togglePet: viewModel.togglePet
+            )
 
             Section("Medicine") {
                 Picker("Saved medicine", selection: $viewModel.selectedSavedOptionID) {
@@ -25,23 +30,6 @@ struct MedicineEventCreationView: View {
 
                 if let medicine = viewModel.selectedMedicine {
                     LabeledContent("Default dose", value: "\(medicine.dosage.formatted()) \(medicine.unit)")
-                }
-            }
-
-            Section("For") {
-                Menu {
-                    ForEach(store.pets) { pet in
-                        Button {
-                            viewModel.togglePet(pet.id)
-                        } label: {
-                            Label(
-                                pet.name,
-                                systemImage: viewModel.selectedPetIDs.contains(pet.id) ? "checkmark" : "cat"
-                            )
-                        }
-                    }
-                } label: {
-                    Label(destinationTitle, systemImage: "person")
                 }
             }
 
@@ -76,14 +64,17 @@ struct MedicineEventCreationView: View {
     }
 
     private var selectedPets: [Pet] {
-        store.pets
-            .filter { viewModel.selectedPetIDs.contains($0.id) }
-            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        EventCreationSelectionText.sortedSelectedPets(
+            selectedPetIDs: viewModel.selectedPetIDs,
+            pets: store.pets
+        )
     }
 
     private var destinationTitle: String {
-        let names = selectedPets.map(\.name)
-        return names.isEmpty ? "Choose pets" : names.joined(separator: ", ")
+        EventCreationSelectionText.petNames(
+            selectedPetIDs: viewModel.selectedPetIDs,
+            pets: store.pets
+        )
     }
 
     private func optionTitle(_ option: SavedEventOption) -> String {
