@@ -602,7 +602,7 @@ Stage 5.5 notes:
     - Script syntax checks and `git diff --check` passed.
 - Initial UI runs exposed container-ID propagation and dialog/menu behavior; those were fixed and the final full suite passed.
 
-Next stage: Stage 6, when requested. Stage 5.5 changes remain uncommitted for review.
+Historical Stage 5.5 checkpoint; this work was subsequently committed with Stages 5.6–5.9 as `5151299`.
 
 ## Stage 5.6: Small Design Updates - Complete
 Goal: implement small requested changes before CloudKit.
@@ -622,7 +622,7 @@ Verification on 2026-09-13:
 - `scripts/test-ui.sh`: all 8 UI tests passed, including Complete now and Events pet filtering (about 167 seconds test execution).
 - `git diff --check`: passed.
 
-Changes remain uncommitted for review. The user subsequently authorized Stages 5.7–5.8 and requested design options only for 5.9.
+This checkpoint was subsequently committed as part of `5151299`. The user subsequently authorized Stages 5.7–5.8 and requested design options only for 5.9.
 
 ## Stage 5.7: Past-Event Editing - Complete
 Authorized 2026-09-13 and verified before starting 5.8.
@@ -653,7 +653,7 @@ Final verification on 2026-09-13:
 - `scripts/test-ui.sh`: all 13 UI tests passed in 366 seconds (`/tmp/pettracker-58-ui-verified.log`). Includes manual Cancel/Log anyway and persisted override, editor warning, Home Complete now, selected-target reminder completion, entered interval/relaunch persistence, and existing smoke paths.
 - `git diff --check` and shell script syntax checks passed.
 
-Initial UI failures identified sheet warning presentation and an ambiguous Settings selector. Both were fixed; the final full suite passed. Stages 5.7–5.8 remain uncommitted for review.
+Initial UI failures identified sheet warning presentation and an ambiguous Settings selector. Both were fixed; the final full suite passed. Stages 5.7–5.8 were subsequently committed in `5151299`.
 
 ## Stage 5.9: Health & Life - Complete
 Approved 2026-09-13: option A in pet detail; Health last in Quick Add; include health in Recent; smaller initial category set. Weight defaults to lb, with kg also available.
@@ -676,6 +676,26 @@ Verification on 2026-09-13:
 
 Approved design is in `health-design-options.md`. Follow-up reminders, charts, attachments, and integrations are deferred. Medication interaction checks are removed from scope. The user requested committing Stages 5.5–5.9 after changing litter icons to `tray`; the icon-only update is included in that commit. CloudKit remains Stage 6, to be started when requested.
 
+## Pre-Stage 6 review (2026-09-13)
+
+Completed local scope is verified and committed as `5151299`. No unanswered choices remain for Stages 5.6–5.9. The approved Health scope and explicitly deferred features remain unchanged; medication interaction work is excluded.
+
+Original-design product gaps remain: pet add/edit, general reminder creation/editing, direct Events creation actions, inline saved-option creation/save-update, and care-event deletion UI. See design.md's implementation boundary for current alternatives and the Stage 3 food-field decision. The user reviewed each gap and approved the minimal versions below before Stage 6. They remain unimplemented until Stage 5.10 is verified.
+
+Do not reset/reseed personal history to make a CloudKit schema change pass. Prove an upgrade path on a copy of a populated local store before enabling sync. Current repositories swallow many fetch/save errors; error reporting and recoverable container startup must be included in sync readiness, so failure is not mistaken for an empty database.
+
+## Stage 5.10: Remaining Local Workflows - Approved, Not Started
+
+The user approved all five items individually before Stage 6:
+
+1. **Pet add/edit:** name and optional daily calorie goal. Preserve the pet ID and linked history on edit. Pet deletion is deferred.
+2. **General reminder creation/editing:** title, pure reminder or event-linked mode, due timestamp/day-only, recurrence, optional end date, and applicable pets/targets. Preserve completed history when editing an active definition.
+3. **Events creation:** a + button opens the existing creation form for the selected event type.
+4. **Care-event deletion:** swipe-to-delete with confirmation for food, medicine, and litter. Refresh visible history/totals immediately; leave reminder completion history unchanged.
+5. **Inline saved-option creation:** Add new food/medication opens the existing saved-option editor, then selects the newly saved option on return. Cancel leaves the previous selection unchanged. Food unit/calorie rate remain locked during logging. The broader save/update checkbox behavior is deferred.
+
+Implement and test each workflow before proceeding to the next. Verify ID/history preservation, canceled actions, persistence after relaunch, creation routing, deletion totals, and new-option selection. Run the full unit/UI suites for milestone completion. Do not begin Stage 6 until this local milestone is complete.
+
 ## Stage 6: iCloud/CloudKit Sync
 Goal: connect persistence to iCloud once local behavior is stable.
 
@@ -686,14 +706,19 @@ Tasks:
 - Map local persistence models to CloudKit-compatible records or SwiftData CloudKit configuration.
 - Validate sync behavior for:
     - pets
-    - events
+    - care events
+    - health entries
     - saved options
-    - reminders
-    - settings that should sync
-- Decide which settings should stay device-local.
-    - Notification presentation preferences may be device-local because notification behavior can differ by device.
+    - reminders and per-pet reminder targets
+- Keep all current notification settings in device-local UserDefaults, including presentation overrides and day-only notification time.
 - Handle iCloud unavailable/signed-out state gracefully.
-- Add basic conflict expectations.
+- Audit every SwiftData record before enabling sync: unique constraints, required attribute defaults/optionality, and any relationships. Preserve stable domain IDs with an application-level identity/reconciliation strategy. Current records use `@Attribute(.unique)`; CloudKit does not support enforcing this option. See [Apple: syncing model data](https://developer.apple.com/documentation/swiftdata/syncing-model-data-across-a-persons-devices).
+- Verify a data-preserving local-store upgrade with populated care, Health, saved options, and reminder history; add versioned schema/migration where needed.
+- Replace seed-on-empty behavior with an initialization strategy that cannot duplicate personal/sample data while an existing iCloud dataset is downloading. Keep UI-test stores and debug resets isolated from iCloud.
+- Refresh PetCareStore and reschedule local notifications when remote changes arrive or the app returns to the foreground; reconcile deletions as well as inserts/edits.
+- Define conflict behavior for simultaneous edits, delete versus edit, and concurrent reminder completion. Prevent duplicate events/history/next occurrences; test partial multi-pet completion across devices.
+- Surface local fetch/save/container errors with a recoverable offline path rather than silently treating failure as no data.
+- Confirm signing team, iCloud container access, and two usable same-account test contexts before claiming sync verification.
 
 Mobile/sync concepts to explain while building:
 - CloudKit containers and entitlements.
@@ -704,6 +729,10 @@ Acceptance checks:
 - Data persists locally.
 - Data syncs between two simulator/device contexts where feasible.
 - App remains usable when iCloud is unavailable.
+- Existing populated local data survives the upgrade; empty second-device startup does not create duplicate seeds.
+- Imported Health/care edits and deletions update visible screens without relaunch; notification schedules follow imported reminder changes.
+- Concurrent reminder completion produces one logical completion/event and consistent per-pet state.
+- UI automation continues to use cloud-disabled test data; current unit/UI regression suites pass.
 - No server-side app state is introduced.
 
 ## Stage 7: Polish, Testing, and Release Readiness

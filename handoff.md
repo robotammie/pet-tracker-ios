@@ -159,3 +159,7 @@ Stage 5.9 is complete: build, 68 unit tests, and all 14 UI tests passed. Review 
 ## Final icon update and commit
 
 The user requested litter icons use SF Symbol `tray` throughout Home/Recent, reminders, litter creation, saved options, and Settings. This icon-only update follows the passing Stage 5.9 build, 68 unit tests, and 14 UI tests. Stages 5.5–5.9 and documentation are included in the requested commit.
+
+## Approved next milestone: Stage 5.10
+
+The user reviewed the original-design gaps one by one and approved minimal pet add/edit, general reminder creation/editing, Events + creation, confirmed care-event swipe deletion, and inline Add new food/medication with automatic selection. Complete and verify these before Stage 6. Pet deletion and the broader saved-option save/update checkbox behavior are deferred. See plan.md for scope and acceptance checks. This is an approved plan; implementation has not started.

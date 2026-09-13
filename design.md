@@ -77,6 +77,20 @@ Prefer an architecture that can support CloudKit from the beginning. If implemen
 - UI should be optimized for mobile viewing/use
 - Photos are not required for v1.
 
+## Current implementation boundary (reviewed 2026-09-13)
+
+Stages 0–5.9 are complete; the final build, 68 unit tests, and 14 UI tests passed. Litter icons now use `tray`. The pre-CloudKit updates below take precedence over older descriptions when they differ.
+
+Outstanding original-design capabilities, not implemented by the completed stages:
+- Pet add/edit UI; pets currently come from seed data.
+- General reminder creation/editing UI; saved medicine creation can autoqueue a daily reminder.
+- New-event actions directly on Events and inline new saved options/save-update controls during logging; use Home Quick Add and Settings saved-option management today. Saved food unit/calorie rate are locked during creation, as explicitly selected in Stage 3; historical editing is available.
+- Care-event deletion UI; repository hard deletion exists, but Events currently only supports tap-to-edit. Health add/edit is complete; health deletion was not part of the approved initial scope.
+
+The user approved completing all five gaps before sync as Stage 5.10: minimal pet name/calorie-goal add/edit; general reminder creation/editing with preserved completed history; Events + routed to the selected type; confirmed care-event swipe deletion without changing reminder history; and inline Add new food/medication using the existing editor and selecting the result. Pet deletion and the broader save/update checkbox behavior remain deferred. Food units/calorie rates stay locked during logging. These decisions are approved but not yet implemented. The older statement that litter has no history page means no separate litter-only screen: the shared Events tab includes litter history, as implemented in Stage 2.
+
+Step 6 must include Health records, preserve existing local history, prevent duplicate initial seed data across devices, refresh the feature store after imported changes, and reconcile reminder completion/history without duplicate logged events. Schema compatibility and iCloud setup are Step 6 work, not proof that sync can be enabled immediately. All current notification settings remain device-local.
+
 ## Data
 ### pet
 name: str
@@ -183,7 +197,7 @@ Saved medicine fields:
 - `purpose`: optional free-text string, such as antibiotic or painkiller.
 - `dosage`: float
 - `unit`: string
-- `cadence`: recurrence-like value, exact storage format TBD.
+- `cadence`: optional `MedicineCadence` wrapping `RecurrenceRule`; persisted as recurrence kind/value/unit and times-of-day minutes.
     - v1 needs both every N hours and N times per day.
     - For N times per day, app should suggest default times that the user can edit.
     - v2 may need custom schedules, such as "1 per day for 5 days, then 1 every other day for 6 days."
