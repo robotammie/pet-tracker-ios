@@ -60,4 +60,19 @@ final class SavedOptionFormViewModelTests: XCTestCase {
 
         XCTAssertTrue(viewModel.canSave())
     }
+
+    func testMedicineOptionDoesNotAddCadenceWithoutScheduleControls() {
+        let viewModel = SavedOptionFormViewModel(eventType: .medicine)
+        viewModel.name = "Pill"
+        viewModel.dosage = 1
+        viewModel.medicineUnit = "tablet"
+
+        let option = viewModel.makeOption()
+
+        guard case let .medicine(data) = option?.data else {
+            return XCTFail("Expected medicine option data")
+        }
+
+        XCTAssertNil(data.cadence)
+    }
 }

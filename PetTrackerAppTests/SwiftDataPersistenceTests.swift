@@ -150,9 +150,30 @@ final class SwiftDataPersistenceTests: XCTestCase {
 
         let saved = try XCTUnwrap(repository.listReminders().first)
         XCTAssertEqual(saved.targets.count, 2)
-        XCTAssertEqual(saved.targets.first?.petID, appaID)
-        XCTAssertEqual(saved.targets.first?.eventData, reminder.targets.first?.eventData)
-        XCTAssertNotNil(saved.targets.last?.completedAt)
+
+        let targetsByPetID = Dictionary(uniqueKeysWithValues: saved.targets.map { ($0.petID, $0) })
+        XCTAssertEqual(targetsByPetID[appaID]?.eventData, reminder.targets.first?.eventData)
+        XCTAssertEqual(targetsByPetID[momoID]?.eventData, reminder.targets.last?.eventData)
+        XCTAssertNotNil(targetsByPetID[momoID]?.completedAt)
+    }
+
+    func testReminderRepositoryPersistsIgnoredUntil() throws {
+        let context = try makeContext()
+        let repository = SwiftDataReminderRepository(context: context)
+        let ignoredUntil = Date(timeIntervalSince1970: 1_000)
+        let reminder = Reminder(
+            title: "Medicine",
+            mode: .pureReminder,
+            eventType: .medicine,
+            dueAt: Date(timeIntervalSince1970: 500),
+            dueStyle: .timestamp,
+            schedule: ReminderSchedule(recurrenceRule: .every(value: 1, unit: .day), endDate: nil),
+            ignoredUntil: ignoredUntil
+        )
+
+        repository.saveReminder(reminder)
+
+        XCTAssertEqual(repository.listReminders().first?.ignoredUntil, ignoredUntil)
     }
 
     private func makeContext() throws -> ModelContext {
@@ -160,7 +181,8 @@ final class SwiftDataPersistenceTests: XCTestCase {
             PetRecord.self,
             CareEventRecord.self,
             SavedEventOptionRecord.self,
-            ReminderRecord.self
+            ReminderRecord.self,
+            ReminderTargetRecord.self
         ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: schema, configurations: [configuration])

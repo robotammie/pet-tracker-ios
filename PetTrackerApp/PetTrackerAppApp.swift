@@ -8,7 +8,8 @@ struct PetTrackerAppApp: App {
             PetRecord.self,
             CareEventRecord.self,
             SavedEventOptionRecord.self,
-            ReminderRecord.self
+            ReminderRecord.self,
+            ReminderTargetRecord.self
         ])
         let configuration = ModelConfiguration(schema: schema)
 

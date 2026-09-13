@@ -2,7 +2,7 @@
 
 Pet Tracker is a personal iOS app for tracking cat care events, reminders, saved autofill data, and notification-driven care routines.
 
-The app is in early implementation. Stages 0 through 4 are complete: the SwiftUI project shell exists, builds for the iOS Simulator, launches with sample data, persists locally with SwiftData, supports core event creation plus saved food/medicine options, and has reminder completion/ignore behavior with best-effort local notifications.
+The app is in early implementation. Stages 0 through 5 are complete: the SwiftUI project shell exists, builds for the iOS Simulator, launches with sample data, persists locally with SwiftData, supports core event creation plus saved food/medicine options, has reminder completion/ignore behavior with best-effort local notifications, and includes focused notification settings.
 
 ## Project Goals
 
@@ -24,7 +24,7 @@ Initial app scope includes:
 - Global/household events where appropriate.
 - Reminders and notifications, including recurring schedules.
 - Reminder completion that can optionally create care events.
-- Small settings surface for notification preferences and default daily notification time.
+- Small settings surface for notification preferences, per-event notification overrides, and default daily notification time.
 
 Photos, Android support, user-defined event types, widgets, household sharing, and unit conversion are intentionally outside v1.
 
@@ -40,6 +40,7 @@ Current direction:
 - Local storage: SwiftData for pets, events, saved options, and reminders.
 - Device-local storage: UserDefaults for notification settings.
 - Notifications: use iOS local notification APIs, with app-level preferences where possible and system settings respected as overrides.
+- Sync plan: add CloudKit after Stage 5.5 local polish; try SwiftData CloudKit first while keeping repository boundaries as an escape hatch.
 
 ## Current App State
 
@@ -62,7 +63,8 @@ Implemented so far:
 - Medicine creation with multi-pet selection and per-pet dose entry.
 - Litter creation with editable timestamp.
 - Saved food and medicine option management from Settings, including soft delete.
-- Settings screen for notification preferences.
+- Settings screen for global notification preferences, per-event notification overrides, and default daily notification time.
+- Debug-only reset/reseed control for local development.
 - Reminder completion, ignore-until, mute, and delete actions.
 - Multi-pet reminder completion with per-pet completion state.
 - Reminder-to-event completion that logs care events.
@@ -71,7 +73,7 @@ Implemented so far:
 - Saved medicine autoqueue for daily reminders.
 - Unit tests for validation, calorie calculation, recurrence scheduling, hard delete, soft delete, reminder mute behavior, multi-pet reminder completion, and reminder persistence.
 
-The app now has local persistence, core event creation, reminder actions, and local notification scheduling. There is no iCloud sync yet.
+The app now has local persistence, core event creation, reminder actions, local notification scheduling, and notification settings. There is no iCloud sync yet.
 
 ## Setup and Run
 
@@ -89,6 +91,8 @@ cp PetTrackerApp/Services/SeedData.local.example.swift \
 ```
 
 Then edit `PetTrackerApp/Services/SeedData.local.swift` with your own development seed data. The local file is ignored by git and is used ahead of the public `SeedData.swift` seed.
+
+During early development, SwiftData schema changes may require deleting local app data. In debug builds, use Settings > Development > Reset and Reseed Local Data to clear SwiftData records, reseed from the configured seed file, clear pending local notifications, and reset the app badge. Formal migrations should be added before relying on the app for real daily-use history.
 
 Run in Xcode:
 
@@ -149,4 +153,4 @@ Keep detailed requirements in `design.md` and detailed execution steps in `plan.
 
 ## Suggested Next Milestone
 
-Move into Stage 4: add reminder completion, recurrence behavior, and notification scheduling.
+Move into Stage 5.5: local polish before CloudKit. This includes docs cleanup, small UI smoke tests for core flows, accessibility identifiers as needed, empty-state review, and reset/reseed workflow polish.

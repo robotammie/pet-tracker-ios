@@ -68,7 +68,7 @@ struct NotificationsView: View {
     private var activeReminders: [Reminder] {
         store.reminders
             .filter(\.isActive)
-            .sorted { $0.dueAt < $1.dueAt }
+            .sorted { $0.displayDueAt() < $1.displayDueAt() }
     }
 
     private var completedReminders: [Reminder] {

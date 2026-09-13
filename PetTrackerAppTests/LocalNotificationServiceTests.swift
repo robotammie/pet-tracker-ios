@@ -81,3 +81,63 @@ final class LocalNotificationServiceTests: XCTestCase {
         )
     }
 }
+
+final class UserDefaultsSettingsRepositoryTests: XCTestCase {
+    func testSettingsRepositoryPersistsEventTypeOverrides() throws {
+        let suiteName = "PetTrackerAppTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+        let repository = UserDefaultsSettingsRepository(defaults: defaults)
+        var settings = UserSettings.defaults
+        settings.defaultDayOnlyNotificationHour = 7
+        settings.globalNotificationPreferences = NotificationPresentationPreferences(
+            showsBanner: true,
+            playsSound: false,
+            updatesBadge: true
+        )
+        settings.setNotificationPreferences(
+            NotificationPresentationPreferences(
+                showsBanner: false,
+                playsSound: false,
+                updatesBadge: true
+            ),
+            for: .medicine
+        )
+
+        repository.saveSettings(settings)
+
+        let loaded = repository.loadSettings()
+        XCTAssertEqual(loaded.defaultDayOnlyNotificationHour, 7)
+        XCTAssertEqual(loaded.globalNotificationPreferences, settings.globalNotificationPreferences)
+        XCTAssertEqual(loaded.notificationPreferences(for: .medicine), settings.notificationPreferences(for: .medicine))
+        XCTAssertFalse(loaded.hasNotificationOverride(for: .food))
+    }
+
+    func testSettingsRepositoryRemovesEventTypeOverrides() throws {
+        let suiteName = "PetTrackerAppTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+        let repository = UserDefaultsSettingsRepository(defaults: defaults)
+        var settings = UserSettings.defaults
+        settings.setNotificationPreferences(
+            NotificationPresentationPreferences(
+                showsBanner: false,
+                playsSound: false,
+                updatesBadge: false
+            ),
+            for: .litter
+        )
+        repository.saveSettings(settings)
+
+        settings.setNotificationPreferences(nil, for: .litter)
+        repository.saveSettings(settings)
+
+        let loaded = repository.loadSettings()
+        XCTAssertFalse(loaded.hasNotificationOverride(for: .litter))
+        XCTAssertEqual(loaded.notificationPreferences(for: .litter), settings.globalNotificationPreferences)
+    }
+}

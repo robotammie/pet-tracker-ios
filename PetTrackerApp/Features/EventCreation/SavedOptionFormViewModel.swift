@@ -81,8 +81,7 @@ final class SavedOptionFormViewModel: ObservableObject {
             data = .medicine(SavedMedicineData(
                 name: name,
                 dosage: dosage,
-                unit: medicineUnit,
-                cadence: MedicineCadence(rule: .every(value: 1, unit: .day))
+                unit: medicineUnit
             ))
         case .litter:
             return nil

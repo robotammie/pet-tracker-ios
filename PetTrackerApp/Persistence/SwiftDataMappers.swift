@@ -189,7 +189,7 @@ enum SwiftDataMapper {
         }
     }
 
-    static func reminder(from record: ReminderRecord) -> Reminder? {
+    static func reminder(from record: ReminderRecord, targetRecords: [ReminderTargetRecord] = []) -> Reminder? {
         guard let mode = ReminderMode(rawValue: record.modeRawValue),
               let dueStyle = ReminderDueStyle(rawValue: record.dueStyleRawValue),
               let status = ReminderStatus(rawValue: record.statusRawValue)
@@ -208,8 +208,9 @@ enum SwiftDataMapper {
             dueStyle: dueStyle,
             status: status,
             schedule: reminderSchedule(from: record),
-            targets: reminderTargets(from: record),
-            completedAt: record.completedAt
+            targets: reminderTargets(from: record, targetRecords: targetRecords),
+            completedAt: record.completedAt,
+            ignoredUntil: record.ignoredUntil
         )
     }
 
@@ -221,8 +222,8 @@ enum SwiftDataMapper {
         record.dueAt = reminder.dueAt
         record.dueStyleRawValue = reminder.dueStyle.rawValue
         record.statusRawValue = reminder.status.rawValue
-        record.targetsJSON = encodeReminderTargets(reminder.targets)
         record.completedAt = reminder.completedAt
+        record.ignoredUntil = reminder.ignoredUntil
 
         record.foodName = nil
         record.foodTypeRawValue = nil
@@ -289,16 +290,38 @@ enum SwiftDataMapper {
         }
     }
 
-    private static func reminderTargets(from record: ReminderRecord) -> [ReminderTarget] {
-        guard let targets = decodeReminderTargets(record.targetsJSON) else {
-            if let eventPetID = record.eventPetID {
-                return [ReminderTarget(petID: eventPetID, eventData: reminderEventData(from: record))]
-            }
+    static func targetRecord(from target: ReminderTarget, reminderID: UUID) -> ReminderTargetRecord {
+        let record = ReminderTargetRecord(
+            reminderID: reminderID,
+            petID: target.petID,
+            completedAt: target.completedAt
+        )
+        apply(target.eventData, toTarget: record)
 
-            return []
+        return record
+    }
+
+    private static func reminderTargets(from record: ReminderRecord, targetRecords: [ReminderTargetRecord]) -> [ReminderTarget] {
+        let targets = targetRecords
+            .map(reminderTarget(from:))
+
+        if !targets.isEmpty {
+            return targets
         }
 
-        return targets
+        if let eventPetID = record.eventPetID {
+            return [ReminderTarget(petID: eventPetID, eventData: reminderEventData(from: record))]
+        }
+
+        return []
+    }
+
+    private static func reminderTarget(from record: ReminderTargetRecord) -> ReminderTarget {
+        ReminderTarget(
+            petID: record.petID,
+            eventData: targetEventData(from: record),
+            completedAt: record.completedAt
+        )
     }
 
     private static func reminderSchedule(from record: ReminderRecord) -> ReminderSchedule? {
@@ -395,6 +418,67 @@ enum SwiftDataMapper {
         }
     }
 
+    private static func apply(_ data: CareEventData?, toTarget record: ReminderTargetRecord) {
+        record.foodName = nil
+        record.foodTypeRawValue = nil
+        record.foodAmount = nil
+        record.foodUnitRawValue = nil
+        record.foodCalories = nil
+        record.medicineName = nil
+        record.medicineDosage = nil
+        record.medicineUnit = nil
+
+        switch data {
+        case let .food(data):
+            record.foodName = data.name
+            record.foodTypeRawValue = data.foodType.rawValue
+            record.foodAmount = data.amount
+            record.foodUnitRawValue = data.unit.rawValue
+            record.foodCalories = data.calories
+
+        case .litter:
+            break
+
+        case let .medicine(data):
+            record.medicineName = data.name
+            record.medicineDosage = data.dosage
+            record.medicineUnit = data.unit
+
+        case nil:
+            break
+        }
+    }
+
+    private static func targetEventData(from record: ReminderTargetRecord) -> CareEventData? {
+        if let name = record.foodName,
+           let foodTypeRawValue = record.foodTypeRawValue,
+           let foodType = FoodType(rawValue: foodTypeRawValue),
+           let amount = record.foodAmount,
+           let unitRawValue = record.foodUnitRawValue,
+           let unit = FoodUnit(rawValue: unitRawValue),
+           let calories = record.foodCalories {
+            return .food(FoodEventData(
+                name: name,
+                foodType: foodType,
+                amount: amount,
+                unit: unit,
+                calories: calories
+            ))
+        }
+
+        if let name = record.medicineName,
+           let dosage = record.medicineDosage,
+           let unit = record.medicineUnit {
+            return .medicine(MedicineEventData(
+                name: name,
+                dosage: dosage,
+                unit: unit
+            ))
+        }
+
+        return nil
+    }
+
     private static func apply(_ rule: RecurrenceRule?, toMedicine record: SavedEventOptionRecord) {
         switch rule {
         case let .every(value, unit):
@@ -429,23 +513,4 @@ enum SwiftDataMapper {
             .compactMap { Int($0) } ?? []
     }
 
-    private static func encodeReminderTargets(_ targets: [ReminderTarget]) -> String? {
-        guard !targets.isEmpty,
-              let data = try? JSONEncoder().encode(targets)
-        else {
-            return nil
-        }
-
-        return String(data: data, encoding: .utf8)
-    }
-
-    private static func decodeReminderTargets(_ value: String?) -> [ReminderTarget]? {
-        guard let value,
-              let data = value.data(using: .utf8)
-        else {
-            return nil
-        }
-
-        return try? JSONDecoder().decode([ReminderTarget].self, from: data)
-    }
 }

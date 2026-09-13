@@ -96,8 +96,8 @@ final class ReminderRecord {
     var dueAt: Date
     var dueStyleRawValue: String
     var statusRawValue: String
-    var targetsJSON: String?
     var completedAt: Date?
+    var ignoredUntil: Date?
 
     var foodName: String?
     var foodTypeRawValue: String?
@@ -131,5 +131,35 @@ final class ReminderRecord {
         self.dueAt = dueAt
         self.dueStyleRawValue = dueStyleRawValue
         self.statusRawValue = statusRawValue
+    }
+}
+
+@Model
+final class ReminderTargetRecord {
+    @Attribute(.unique) var id: UUID
+    var reminderID: UUID
+    var petID: UUID
+    var completedAt: Date?
+
+    var foodName: String?
+    var foodTypeRawValue: String?
+    var foodAmount: Double?
+    var foodUnitRawValue: String?
+    var foodCalories: Int?
+
+    var medicineName: String?
+    var medicineDosage: Double?
+    var medicineUnit: String?
+
+    init(
+        id: UUID = UUID(),
+        reminderID: UUID,
+        petID: UUID,
+        completedAt: Date? = nil
+    ) {
+        self.id = id
+        self.reminderID = reminderID
+        self.petID = petID
+        self.completedAt = completedAt
     }
 }

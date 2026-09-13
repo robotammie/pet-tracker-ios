@@ -63,4 +63,53 @@ final class ReminderActionServiceTests: XCTestCase {
         XCTAssertEqual(result.historyReminder?.status, .completed)
         XCTAssertEqual(result.historyReminder?.dueAt, dueAt)
     }
+
+    func testRecurringIgnoreWithoutFutureUpdatePreservesScheduleDueDate() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let dueAt = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 6, day: 1, hour: 8)))
+        let ignoredUntil = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 6, day: 2, hour: 9)))
+        let reminder = Reminder(
+            title: "Medicine",
+            mode: .pureReminder,
+            eventType: .medicine,
+            dueAt: dueAt,
+            dueStyle: .timestamp,
+            schedule: ReminderSchedule(recurrenceRule: .every(value: 1, unit: .day), endDate: nil)
+        )
+
+        let ignored = ReminderActionService.ignore(
+            reminder,
+            until: ignoredUntil,
+            updateFutureNotifications: false,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(ignored.dueAt, dueAt)
+        XCTAssertEqual(ignored.ignoredUntil, ignoredUntil)
+        XCTAssertEqual(ignored.displayDueAt(now: dueAt), ignoredUntil)
+    }
+
+    func testRecurringIgnoreWithFutureUpdateMovesScheduleDueDate() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let dueAt = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 6, day: 1, hour: 8)))
+        let ignoredUntil = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 6, day: 2, hour: 9)))
+        let reminder = Reminder(
+            title: "Medicine",
+            mode: .pureReminder,
+            eventType: .medicine,
+            dueAt: dueAt,
+            dueStyle: .timestamp,
+            schedule: ReminderSchedule(recurrenceRule: .every(value: 1, unit: .day), endDate: nil)
+        )
+
+        let ignored = ReminderActionService.ignore(
+            reminder,
+            until: ignoredUntil,
+            updateFutureNotifications: true,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(ignored.dueAt, ignoredUntil)
+        XCTAssertNil(ignored.ignoredUntil)
+    }
 }

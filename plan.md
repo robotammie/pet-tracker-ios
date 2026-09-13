@@ -9,8 +9,14 @@ Known choices:
 - Build iOS native only for v1.
 - Prefer SwiftUI.
 - Design the data layer so CloudKit/iCloud sync can be supported without rewriting the UI.
+- Add CloudKit after Stage 5 and a local-only polish pass.
+- Try SwiftData CloudKit first while keeping repository boundaries strict enough to switch to explicit sync later if needed.
 - Treat food, litter, medicine, notifications, saved autofill options, pets, and settings as separate model concerns.
 - Keep v1 settings focused on notification preferences and the global day-only notification time.
+- Use hybrid notification settings: global controls first, with restrained per-event-type overrides.
+- Add accessibility identifiers as UI is touched; add UI smoke tests during the local polish pass.
+- During early development, reset/reseed after breaking schema changes; add formal migrations before real daily-use data matters.
+- Include a debug-only reset/reseed tool now for faster simulator/device iteration.
 
 ## Test Workflow Notes
 The XCTest bodies are currently fast, but iOS simulator test attachment can take 60-90 seconds and may look quiet while Xcode is waiting on the runner.
@@ -520,19 +526,21 @@ scripts/test-without-building.sh
 
 Result: 30 tests passed.
 
-## Stage 5: Settings
+## Stage 5: Settings - Complete
 Goal: expose the small set of v1 settings without turning settings into a junk drawer.
 
 Tasks:
-- Build settings view.
-- Add global notification presentation preferences:
+- [x] Build settings view.
+- [x] Add global notification presentation preferences:
     - banner
     - sound
     - badge
-- Add optional per-event-type notification presentation preferences.
-- Add global default day-only notification time.
-- Make reminder scheduling read from these settings.
-- Make clear in implementation notes that iOS system settings can override app-level notification behavior.
+- [x] Add optional per-event-type notification presentation preferences.
+- [x] Add global default day-only notification time.
+- [x] Make reminder scheduling read from these settings.
+- [x] Make clear in implementation notes that iOS system settings can override app-level notification behavior.
+- [x] Add debug-only reset/reseed control for local development.
+- [x] Add accessibility identifiers to touched settings controls.
 
 Mobile concepts to explain while building:
 - UserDefaults vs persisted app data.
@@ -540,15 +548,57 @@ Mobile concepts to explain while building:
 - iOS notification permission and presentation constraints.
 
 Acceptance checks:
-- Settings persist across app launches.
-- Default daily notification time affects new day-only reminders.
-- Per-event-type presentation preferences override global preferences where set.
+- [x] Settings persist across app launches.
+- [x] Default daily notification time affects new day-only reminders.
+- [x] Per-event-type presentation preferences override global preferences where set.
+- [x] Debug reset clears local SwiftData records, reseeds from configured seed data, clears pending notifications, and resets the badge.
+
+Stage 5 notes:
+- Settings now show global notification presentation controls first.
+- Food, Litter, and Medicine notification overrides are available in collapsed sections.
+- Each event type has a Customize toggle; turning it off removes the override and falls back to global settings.
+- Notification preferences remain per-device in UserDefaults.
+- Debug builds include a Settings > Development reset/reseed button with destructive confirmation.
+- Debug reset keeps app-level settings, clears SwiftData-backed app data, reseeds from `SeedData.local.swift` when present, clears pending local notifications, resets the badge, then schedules active seeded reminders.
+- Tests:
+    - `PetTrackerAppTests/LocalNotificationServiceTests.swift`
+- Verified with:
+
+```sh
+scripts/build-for-testing.sh
+scripts/test-without-building.sh
+```
+
+Result: 38 tests passed.
+
+## Stage 5.5: Local Polish Before CloudKit
+Goal: make the local-only app comfortable enough for daily testing before adding sync complexity.
+
+Tasks:
+- Update README and plan when major flows change.
+- Add small UI smoke tests for core happy paths:
+    - app launches to Home
+    - quick-add food creates a visible event
+    - quick-add medicine creates a visible event
+    - reminder can be marked complete
+    - settings toggles persist
+- Add or refine accessibility identifiers as needed for those tests.
+- Review empty states and first-run state.
+- Review touch targets and Dynamic Type behavior.
+- Document the reset/reseed workflow clearly for simulator and real-device testing.
+
+Acceptance checks:
+- Core local workflows are pleasant enough for repeated personal testing.
+- UI smoke tests cover the most important user paths without becoming slow or flaky.
+- Known schema-reset expectations are documented before CloudKit work starts.
 
 ## Stage 6: iCloud/CloudKit Sync
 Goal: connect persistence to iCloud once local behavior is stable.
 
 Tasks:
 - Enable iCloud/CloudKit entitlements.
+- Try SwiftData CloudKit integration first.
+- Keep repository boundaries strict so explicit CloudKit sync remains available as an escape hatch.
 - Map local persistence models to CloudKit-compatible records or SwiftData CloudKit configuration.
 - Validate sync behavior for:
     - pets

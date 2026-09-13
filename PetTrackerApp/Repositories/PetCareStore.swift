@@ -11,19 +11,23 @@ final class PetCareStore: ObservableObject {
     private var eventRepository: CareEventRepository?
     private var savedOptionRepository: SavedEventOptionRepository?
     private var reminderRepository: ReminderRepository?
+    private let notificationScheduler: NotificationScheduling
+    private var developmentResetAction: (() -> Void)?
 
     init(
         pets: [Pet] = [],
         events: [CareEvent] = [],
         savedOptions: [SavedEventOption] = [],
         reminders: [Reminder] = [],
-        settings: UserSettings = .defaults
+        settings: UserSettings = .defaults,
+        notificationScheduler: NotificationScheduling = LocalNotificationScheduler()
     ) {
         self.pets = pets
         self.events = events
         self.savedOptions = savedOptions
         self.reminders = reminders
         self.settings = settings
+        self.notificationScheduler = notificationScheduler
     }
 
     func configurePersistence(
@@ -110,8 +114,8 @@ final class PetCareStore: ObservableObject {
         let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: now) ?? now
 
         return reminders
-            .filter { $0.isActive && $0.dueAt <= tomorrow }
-            .sorted { $0.dueAt < $1.dueAt }
+            .filter { $0.isActive && $0.displayDueAt(now: now) <= tomorrow }
+            .sorted { $0.displayDueAt(now: now) < $1.displayDueAt(now: now) }
     }
 
     func activeSavedOptions(for eventType: CareEventType) -> [SavedEventOption] {
@@ -239,8 +243,37 @@ final class PetCareStore: ObservableObject {
     }
 
     func syncLocalNotifications() {
-        LocalNotificationService.sync(reminders: reminders, settings: settings)
+        notificationScheduler.sync(reminders: reminders, settings: settings)
     }
+
+    func requestNotificationAuthorization() {
+        notificationScheduler.requestAuthorization()
+    }
+
+#if DEBUG
+    func configureDevelopmentReset(_ action: @escaping () -> Void) {
+        developmentResetAction = action
+    }
+
+    func resetDevelopmentData() {
+        if let developmentResetAction {
+            developmentResetAction()
+        } else {
+            pets.removeAll()
+            events.removeAll()
+            savedOptions.removeAll()
+            reminders.removeAll()
+            let preview = PetCareStore.preview
+            pets = preview.pets
+            events = preview.events
+            savedOptions = preview.savedOptions
+            reminders = preview.reminders
+        }
+
+        notificationScheduler.resetScheduledNotifications()
+        syncLocalNotifications()
+    }
+#endif
 }
 
 extension PetCareStore: PetRepository {

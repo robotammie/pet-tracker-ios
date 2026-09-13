@@ -148,8 +148,18 @@ final class SwiftDataReminderRepository: ReminderRepository {
     }
 
     func listReminders(includeMuted: Bool = false) -> [Reminder] {
-        records(ReminderRecord.self)
-            .compactMap(SwiftDataMapper.reminder(from:))
+        let targetRecordsByReminderID = Dictionary(
+            grouping: records(ReminderTargetRecord.self),
+            by: \.reminderID
+        )
+
+        return records(ReminderRecord.self)
+            .compactMap { record in
+                SwiftDataMapper.reminder(
+                    from: record,
+                    targetRecords: targetRecordsByReminderID[record.id] ?? []
+                )
+            }
             .filter { includeMuted || $0.status != .muted }
     }
 
@@ -165,6 +175,7 @@ final class SwiftDataReminderRepository: ReminderRepository {
         record.id = reminder.id
         SwiftDataMapper.update(record, with: reminder)
         insertIfNeeded(record)
+        replaceTargets(for: reminder)
         save()
     }
 
@@ -181,7 +192,20 @@ final class SwiftDataReminderRepository: ReminderRepository {
         records(ReminderRecord.self)
             .filter { $0.id == id }
             .forEach(context.delete)
+        records(ReminderTargetRecord.self)
+            .filter { $0.reminderID == id }
+            .forEach(context.delete)
         save()
+    }
+
+    private func replaceTargets(for reminder: Reminder) {
+        records(ReminderTargetRecord.self)
+            .filter { $0.reminderID == reminder.id }
+            .forEach(context.delete)
+
+        reminder.targets
+            .map { SwiftDataMapper.targetRecord(from: $0, reminderID: reminder.id) }
+            .forEach(context.insert)
     }
 
     private func records<T: PersistentModel>(_ type: T.Type) -> [T] {

@@ -233,6 +233,7 @@ struct Reminder: Identifiable, Hashable {
     var schedule: ReminderSchedule?
     var targets: [ReminderTarget]
     var completedAt: Date?
+    var ignoredUntil: Date?
 
     var isActive: Bool {
         status == .active
@@ -254,13 +255,23 @@ struct Reminder: Identifiable, Hashable {
         return incompleteTargets.isEmpty
     }
 
+    func displayDueAt(now: Date = .now) -> Date {
+        if let ignoredUntil, ignoredUntil > now {
+            return ignoredUntil
+        }
+
+        return dueAt
+    }
+
     func isOverdue(now: Date = .now, calendar: Calendar = .current) -> Bool {
+        let effectiveDueAt = displayDueAt(now: now)
+
         switch dueStyle {
         case .timestamp:
-            return dueAt < now
+            return effectiveDueAt < now
         case .dayOnly:
-            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: dueAt)) else {
-                return dueAt < now
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: effectiveDueAt)) else {
+                return effectiveDueAt < now
             }
 
             return nextDay <= now
@@ -279,7 +290,8 @@ struct Reminder: Identifiable, Hashable {
         status: ReminderStatus = .active,
         schedule: ReminderSchedule? = nil,
         targets: [ReminderTarget] = [],
-        completedAt: Date? = nil
+        completedAt: Date? = nil,
+        ignoredUntil: Date? = nil
     ) {
         self.id = id
         self.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -297,6 +309,7 @@ struct Reminder: Identifiable, Hashable {
             self.targets = targets
         }
         self.completedAt = completedAt
+        self.ignoredUntil = ignoredUntil
     }
 }
 
@@ -336,5 +349,25 @@ struct UserSettings: Hashable {
         }
 
         return override.preferences
+    }
+
+    func hasNotificationOverride(for eventType: CareEventType) -> Bool {
+        eventTypeNotificationPreferences.contains { $0.eventType == eventType }
+    }
+
+    mutating func setNotificationPreferences(
+        _ preferences: NotificationPresentationPreferences?,
+        for eventType: CareEventType
+    ) {
+        eventTypeNotificationPreferences.removeAll { $0.eventType == eventType }
+
+        guard let preferences else {
+            return
+        }
+
+        eventTypeNotificationPreferences.append(EventTypeNotificationPreferences(
+            eventType: eventType,
+            preferences: preferences
+        ))
     }
 }

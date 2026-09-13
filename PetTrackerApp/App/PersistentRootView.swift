@@ -40,6 +40,17 @@ struct PersistentRootView: View {
             reminderRepository: reminderRepository
         )
 
+#if DEBUG
+        store.configureDevelopmentReset {
+            resetAndReseedDevelopmentData(
+                petRepository: petRepository,
+                eventRepository: eventRepository,
+                savedOptionRepository: savedOptionRepository,
+                reminderRepository: reminderRepository
+            )
+        }
+#endif
+
         if petRepository.listPets().isEmpty {
             seedInitialData(
                 petRepository: petRepository,
@@ -51,7 +62,7 @@ struct PersistentRootView: View {
 
         store.refreshFromPersistence()
         store.settings = settingsRepository.loadSettings()
-        LocalNotificationService.requestAuthorization()
+        store.requestNotificationAuthorization()
         store.syncLocalNotifications()
     }
 
@@ -68,6 +79,36 @@ struct PersistentRootView: View {
         preview.savedOptions.forEach(savedOptionRepository.saveSavedOption)
         preview.reminders.forEach(reminderRepository.saveReminder)
     }
+
+#if DEBUG
+    private func resetAndReseedDevelopmentData(
+        petRepository: PetRepository,
+        eventRepository: CareEventRepository,
+        savedOptionRepository: SavedEventOptionRepository,
+        reminderRepository: ReminderRepository
+    ) {
+        deleteAll(ReminderTargetRecord.self)
+        deleteAll(ReminderRecord.self)
+        deleteAll(SavedEventOptionRecord.self)
+        deleteAll(CareEventRecord.self)
+        deleteAll(PetRecord.self)
+
+        seedInitialData(
+            petRepository: petRepository,
+            eventRepository: eventRepository,
+            savedOptionRepository: savedOptionRepository,
+            reminderRepository: reminderRepository
+        )
+
+        store.refreshFromPersistence()
+    }
+
+    private func deleteAll<T: PersistentModel>(_ type: T.Type) {
+        let records = (try? modelContext.fetch(FetchDescriptor<T>())) ?? []
+        records.forEach(modelContext.delete)
+        try? modelContext.save()
+    }
+#endif
 }
 
 #Preview {

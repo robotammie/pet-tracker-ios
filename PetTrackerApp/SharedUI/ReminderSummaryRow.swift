@@ -38,10 +38,10 @@ struct ReminderSummaryRow: View {
     private var statusText: some View {
         Group {
             if reminder.isOverdue(now: now) {
-                RelativeTimeText(date: reminder.dueAt)
+                RelativeTimeText(date: reminder.displayDueAt(now: now))
                     .foregroundStyle(.red)
             } else {
-                RelativeTimeText(date: reminder.dueAt)
+                RelativeTimeText(date: reminder.displayDueAt(now: now))
                     .foregroundStyle(.secondary)
             }
         }

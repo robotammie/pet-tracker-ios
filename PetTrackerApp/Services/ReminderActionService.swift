@@ -54,12 +54,15 @@ enum ReminderActionService {
         calendar: Calendar = .current
     ) -> Reminder {
         var updated = reminder
-        updated.dueAt = ignoreUntil
 
-        if updateFutureNotifications {
+        if updateFutureNotifications || !reminder.isRecurring {
+            updated.dueAt = ignoreUntil
+            updated.ignoredUntil = nil
             updated.targets = updated.targets.map { target in
                 ReminderTarget(petID: target.petID, eventData: target.eventData, completedAt: nil)
             }
+        } else {
+            updated.ignoredUntil = ignoreUntil
         }
 
         return updated
@@ -74,6 +77,7 @@ enum ReminderActionService {
         var completed = reminder
         completed.status = .completed
         completed.completedAt = completionTime
+        completed.ignoredUntil = nil
 
         guard let schedule = reminder.schedule,
               let nextDue = ReminderScheduler.nextDueDate(
@@ -89,6 +93,7 @@ enum ReminderActionService {
         next.dueAt = nextDue
         next.status = .active
         next.completedAt = nil
+        next.ignoredUntil = nil
         next.targets = reminder.targets.map { target in
             ReminderTarget(petID: target.petID, eventData: target.eventData, completedAt: nil)
         }
@@ -106,7 +111,8 @@ enum ReminderActionService {
             status: .completed,
             schedule: nil,
             targets: history.targets,
-            completedAt: completionTime
+            completedAt: completionTime,
+            ignoredUntil: nil
         )
 
         return ReminderCompletionResult(updatedReminder: next, historyReminder: history, events: events)

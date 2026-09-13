@@ -1,7 +1,29 @@
 import Foundation
-import UserNotifications
+@preconcurrency import UserNotifications
+
+protocol NotificationScheduling {
+    func requestAuthorization()
+    func sync(reminders: [Reminder], settings: UserSettings)
+    func resetScheduledNotifications()
+}
+
+struct LocalNotificationScheduler: NotificationScheduling {
+    func requestAuthorization() {
+        LocalNotificationService.requestAuthorization()
+    }
+
+    func sync(reminders: [Reminder], settings: UserSettings) {
+        LocalNotificationService.sync(reminders: reminders, settings: settings)
+    }
+
+    func resetScheduledNotifications() {
+        LocalNotificationService.resetScheduledNotifications()
+    }
+}
 
 enum LocalNotificationService {
+    private static let identifierPrefix = "reminder-"
+
     static func requestAuthorization() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in }
     }
@@ -16,21 +38,22 @@ enum LocalNotificationService {
             calendar: calendar
         )
 
-        center.removeAllPendingNotificationRequests()
         setBadgeCount(overdueBadgeCount)
 
-        activeReminders.forEach { reminder in
-            schedule(
-                reminder,
-                settings: settings,
-                calendar: calendar,
-                deliveredBadgeCount: deliveredBadgeCount(
-                    for: reminder,
-                    activeReminders: activeReminders,
+        removePendingReminderRequests(center: center) {
+            activeReminders.forEach { reminder in
+                schedule(
+                    reminder,
                     settings: settings,
-                    calendar: calendar
+                    calendar: calendar,
+                    deliveredBadgeCount: deliveredBadgeCount(
+                        for: reminder,
+                        activeReminders: activeReminders,
+                        settings: settings,
+                        calendar: calendar
+                    )
                 )
-            )
+            }
         }
     }
 
@@ -59,9 +82,17 @@ enum LocalNotificationService {
         }
 
         let preferences = settings.notificationPreferences(for: reminder.eventType)
+
+        guard preferences.showsBanner || preferences.playsSound || preferences.updatesBadge else {
+            return
+        }
+
         let content = UNMutableNotificationContent()
-        content.title = reminder.title
-        content.body = notificationBody(for: reminder)
+
+        if preferences.showsBanner {
+            content.title = reminder.title
+            content.body = notificationBody(for: reminder)
+        }
 
         if preferences.playsSound {
             content.sound = .default
@@ -75,11 +106,14 @@ enum LocalNotificationService {
 
         switch reminder.dueStyle {
         case .timestamp:
-            let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: reminder.dueAt)
+            let components = calendar.dateComponents(
+                [.year, .month, .day, .hour, .minute],
+                from: reminder.displayDueAt()
+            )
             trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
 
         case .dayOnly:
-            var components = calendar.dateComponents([.year, .month, .day], from: reminder.dueAt)
+            var components = calendar.dateComponents([.year, .month, .day], from: reminder.displayDueAt())
             components.hour = settings.defaultDayOnlyNotificationHour
             components.minute = 0
             trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
@@ -100,6 +134,12 @@ enum LocalNotificationService {
         )
     }
 
+    static func resetScheduledNotifications() {
+        let center = UNUserNotificationCenter.current()
+        center.removeAllPendingNotificationRequests()
+        setBadgeCount(0)
+    }
+
     private static func setBadgeCount(_ count: Int) {
         UNUserNotificationCenter.current().setBadgeCount(count)
     }
@@ -116,9 +156,23 @@ enum LocalNotificationService {
 
         return activeReminders.filter { candidate in
             settings.notificationPreferences(for: candidate.eventType).updatesBadge
-                && candidate.dueAt <= reminder.dueAt
-                && candidate.isOverdue(now: reminder.dueAt, calendar: calendar)
+                && candidate.displayDueAt() <= reminder.displayDueAt()
+                && candidate.isOverdue(now: reminder.displayDueAt(), calendar: calendar)
         }.count
+    }
+
+    private static func removePendingReminderRequests(
+        center: UNUserNotificationCenter,
+        completion: @escaping @Sendable () -> Void
+    ) {
+        center.getPendingNotificationRequests { requests in
+            let reminderIdentifiers = requests
+                .map(\.identifier)
+                .filter { $0.hasPrefix(identifierPrefix) }
+
+            center.removePendingNotificationRequests(withIdentifiers: reminderIdentifiers)
+            completion()
+        }
     }
 
     private static func notificationBody(for reminder: Reminder) -> String {
@@ -136,6 +190,6 @@ enum LocalNotificationService {
     }
 
     private static func notificationIdentifier(for reminderID: UUID) -> String {
-        "reminder-\(reminderID.uuidString)"
+        "\(identifierPrefix)\(reminderID.uuidString)"
     }
 }
