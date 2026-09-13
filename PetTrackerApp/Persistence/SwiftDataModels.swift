@@ -28,10 +28,16 @@ final class CareEventRecord {
     var foodAmount: Double?
     var foodUnitRawValue: String?
     var foodCalories: Int?
+    var foodCaloriesPerUnit: Int?
+    var doseTimingOverrideAt: Date?
+    var doseTimingOverrideMessage: String?
 
     var medicineName: String?
     var medicineDosage: Double?
     var medicineUnit: String?
+    var medicineSavedOptionID: UUID?
+    var medicineMinimumDoseHours: Double?
+    var medicineMaximumDoseHours: Double?
 
     init(
         id: UUID = UUID(),
@@ -59,13 +65,19 @@ final class SavedEventOptionRecord {
     var deletedAt: Date?
 
     var foodName: String?
+    var foodOfficialName: String?
     var foodUnitRawValue: String?
     var foodCaloriesPerUnit: Int?
     var foodTypeRawValue: String?
 
     var medicineName: String?
+    var medicinePurpose: String?
+    var medicinePetDoseIntervalsJSON: String?
     var medicineDosage: Double?
     var medicineUnit: String?
+    var medicineSavedOptionID: UUID?
+    var medicineMinimumDoseHours: Double?
+    var medicineMaximumDoseHours: Double?
     var medicineRecurrenceKind: String?
     var medicineRecurrenceValue: Int?
     var medicineRecurrenceUnitRawValue: String?
@@ -108,6 +120,9 @@ final class ReminderRecord {
     var medicineName: String?
     var medicineDosage: Double?
     var medicineUnit: String?
+    var medicineSavedOptionID: UUID?
+    var medicineMinimumDoseHours: Double?
+    var medicineMaximumDoseHours: Double?
 
     var recurrenceKind: String?
     var recurrenceValue: Int?
@@ -150,6 +165,9 @@ final class ReminderTargetRecord {
     var medicineName: String?
     var medicineDosage: Double?
     var medicineUnit: String?
+    var medicineSavedOptionID: UUID?
+    var medicineMinimumDoseHours: Double?
+    var medicineMaximumDoseHours: Double?
 
     init(
         id: UUID = UUID(),

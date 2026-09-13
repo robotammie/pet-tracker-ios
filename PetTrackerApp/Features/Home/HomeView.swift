@@ -4,6 +4,7 @@ struct HomeView: View {
     @EnvironmentObject private var store: PetCareStore
     @State private var isDueExpanded = true
     @State private var isRecentExpanded = true
+    @State private var healthRoute: HealthEditorRoute?
     @State private var creationRoute: EventCreationRoute?
     private let calendar = Calendar.current
 
@@ -32,6 +33,9 @@ struct HomeView: View {
             }
         }
         .navigationTitle("Pet Tracker")
+        .sheet(item: $healthRoute) { route in
+            HealthEntryEditorView(entry: route.entry, petID: route.petID)
+        }
         .sheet(item: $creationRoute) { route in
             EventCreationSheet(route: route)
                 .environmentObject(store)
@@ -43,6 +47,10 @@ struct HomeView: View {
             quickAddButton("Food", type: .food)
             quickAddButton("Medicine", type: .medicine)
             quickAddButton("Litter", type: .litter)
+            Button { healthRoute = HealthEditorRoute() } label: {
+                Image(systemName: "heart.text.square").frame(maxWidth: .infinity).frame(minHeight: 32)
+            }
+            .accessibilityLabel("Health").accessibilityIdentifier("home.quickAdd.Health")
         }
         .buttonStyle(.bordered)
         .controlSize(.large)
@@ -58,6 +66,7 @@ struct HomeView: View {
                 .frame(minHeight: 32)
         }
         .accessibilityLabel(title)
+        .accessibilityIdentifier("home.quickAdd.\(type.rawValue)")
     }
 
     @ViewBuilder
@@ -68,32 +77,47 @@ struct HomeView: View {
             ContentUnavailableView("No reminders due soon", systemImage: "bell.slash")
         } else {
             ForEach(reminders) { reminder in
-                ReminderSummaryRow(reminder: reminder, showsEventIcon: true)
+                ReminderSummaryRow(reminder: reminder, showsEventIcon: true) {
+                    store.completeReminderNowAndRefresh(id: reminder.id)
+                }
             }
         }
     }
 
     @ViewBuilder
     private var recentByCategoryContent: some View {
-        let events = recentHomeEvents()
-
-        if events.isEmpty {
-            ContentUnavailableView("No care events yet", systemImage: "calendar.badge.exclamationmark")
+        let items = recentHomeItems()
+        if items.isEmpty {
+            ContentUnavailableView("No events yet", systemImage: "calendar.badge.exclamationmark")
         } else {
-            ForEach(events) { event in
-                NavigationLink {
-                    EventListView(initialSelectedType: event.type)
-                } label: {
-                    HomeRecentEventRow(event: event, petName: store.petName(for: event.petID))
+            ForEach(items) { item in
+                switch item {
+                case let .care(event):
+                    NavigationLink { EventListView(initialSelectedType: event.type) } label: {
+                        HomeRecentEventRow(event: event, petName: store.petName(for: event.petID))
+                    }
+                case let .health(entry):
+                    if let pet = store.pets.first(where: { $0.id == entry.petID }) {
+                        NavigationLink { PetDetailView(pet: pet, initialHealth: true) } label: {
+                            HealthSummaryRow(entry: entry, petName: pet.name)
+                        }
+                        .accessibilityIdentifier("home.recentHealth.\(entry.id)")
+                    }
                 }
             }
         }
     }
 
+    private func recentHomeItems(now: Date = .now) -> [HomeRecentItem] {
+        (recentHomeEvents(now: now).map(HomeRecentItem.care)
+            + HealthRecentService.entries(store.healthEntries, now: now).map(HomeRecentItem.health))
+            .sorted { $0.date > $1.date }
+    }
+
     private func recentHomeEvents(now: Date = .now) -> [CareEvent] {
         let cutoff = calendar.date(byAdding: .day, value: -7, to: now) ?? now
         let groupedEvents = Dictionary(grouping: store.events.filter { event in
-            event.startTime >= cutoff
+            event.startTime >= cutoff && event.startTime <= now
         }) { event in
             RecentEventKey(type: event.type, petID: event.petID)
         }
@@ -101,6 +125,17 @@ struct HomeView: View {
         return groupedEvents.values
             .compactMap { events in events.max { $0.startTime < $1.startTime } }
             .sorted { $0.startTime > $1.startTime }
+    }
+}
+
+private enum HomeRecentItem: Identifiable {
+    case care(CareEvent)
+    case health(HealthEntry)
+    var id: String {
+        switch self { case let .care(event): "care.\(event.id)"; case let .health(entry): "health.\(entry.id)" }
+    }
+    var date: Date {
+        switch self { case let .care(event): event.startTime; case let .health(entry): entry.happenedAt }
     }
 }
 
@@ -168,7 +203,7 @@ extension CareEventType {
         case .medicine:
             return "pills"
         case .litter:
-            return "sparkles"
+            return "tray"
         }
     }
 }

@@ -12,7 +12,7 @@ struct LitterEventCreationView: View {
             }
 
             Section {
-                Label("Household litter box cleaning", systemImage: "sparkles")
+                Label("Household litter box cleaning", systemImage: "tray")
                     .foregroundStyle(.secondary)
             }
         }
@@ -23,6 +23,7 @@ struct LitterEventCreationView: View {
                     store.saveCareEventAndRefresh(viewModel.makeEvent())
                     dismiss()
                 }
+                .accessibilityIdentifier("litterCreation.save")
             }
         }
     }

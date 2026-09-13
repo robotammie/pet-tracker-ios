@@ -27,7 +27,8 @@ enum FoodEventDataValidator {
             foodType: foodType,
             amount: amount,
             unit: unit,
-            calories: calories(amount: amount, caloriesPerUnit: caloriesPerUnit)
+            calories: calories(amount: amount, caloriesPerUnit: caloriesPerUnit),
+            caloriesPerUnit: caloriesPerUnit
         )
     }
 }
@@ -72,7 +73,8 @@ enum MultiPetFoodEventFactory {
                 calories: FoodEventDataValidator.calories(
                     amount: amount,
                     caloriesPerUnit: food.caloriesPerUnit
-                )
+                ),
+                caloriesPerUnit: food.caloriesPerUnit
             )
 
             return CareEvent(

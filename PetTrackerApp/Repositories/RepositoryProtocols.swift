@@ -29,3 +29,8 @@ protocol UserSettingsRepository {
     func loadSettings() -> UserSettings
     func saveSettings(_ settings: UserSettings)
 }
+
+protocol HealthEntryRepository {
+    func listHealthEntries() -> [HealthEntry]
+    func saveHealthEntry(_ entry: HealthEntry) throws
+}

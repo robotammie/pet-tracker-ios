@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct FoodEventCreationView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var store: PetCareStore
     @StateObject private var viewModel = FoodEventFormViewModel()
@@ -20,6 +21,10 @@ struct FoodEventCreationView: View {
             )
 
             Section("Food") {
+                if foodOptions.isEmpty {
+                    Text("Add a food option in Settings > Saved Options > Food before logging food.")
+                        .foregroundStyle(.secondary)
+                }
                 Picker("Saved food", selection: $viewModel.selectedSavedOptionID) {
                     Text("Choose food").tag(Optional<UUID>.none)
 
@@ -27,6 +32,7 @@ struct FoodEventCreationView: View {
                         Text(optionTitle(option)).tag(Optional(option.id))
                     }
                 }
+                .accessibilityIdentifier("foodCreation.savedOption")
                 .onChange(of: viewModel.selectedSavedOptionID) { _, selectedID in
                     viewModel.selectSavedOption(foodOptions.first { $0.id == selectedID })
                 }
@@ -56,6 +62,7 @@ struct FoodEventCreationView: View {
                     dismiss()
                 }
                 .disabled(!viewModel.canSave())
+                .accessibilityIdentifier("foodCreation.save")
             }
         }
     }
@@ -104,10 +111,15 @@ struct FoodEventCreationView: View {
     }
 
     private func amountRow(_ title: String, amount: Binding<Double>) -> some View {
-        HStack(alignment: .firstTextBaseline) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(alignment: .firstTextBaseline))
+        return layout {
             Text(title)
 
-            Spacer()
+            if !dynamicTypeSize.isAccessibilitySize {
+                Spacer()
+            }
 
             if let food = viewModel.selectedFood {
                 VStack(alignment: .trailing, spacing: 4) {
@@ -115,7 +127,9 @@ struct FoodEventCreationView: View {
                         TextField("Amount", value: amount, format: .number)
                             .multilineTextAlignment(.trailing)
                             .keyboardType(.decimalPad)
-                            .frame(maxWidth: 90)
+                            .frame(maxWidth: 90, minHeight: 44)
+                            .accessibilityLabel("Amount for \(title)")
+                            .accessibilityIdentifier("foodCreation.amount.\(title)")
 
                         Text(food.unit.rawValue)
                             .foregroundStyle(.secondary)

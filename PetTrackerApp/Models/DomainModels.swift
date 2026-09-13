@@ -31,6 +31,11 @@ enum FoodType: String, CaseIterable, Identifiable, Codable {
 enum FoodUnit: String, CaseIterable, Identifiable, Codable {
     case cup = "cup"
     case ounce = "oz"
+    case can = "can"
+
+    static func options(for foodType: FoodType) -> [FoodUnit] {
+        allCases.filter { $0 != .can || foodType == .wet }
+    }
 
     var id: String { rawValue }
 }
@@ -41,13 +46,15 @@ struct FoodEventData: Hashable, Codable {
     var amount: Double
     var unit: FoodUnit
     var calories: Int
+    var caloriesPerUnit: Int?
 
-    init(name: String, foodType: FoodType, amount: Double, unit: FoodUnit, calories: Int) {
+    init(name: String, foodType: FoodType, amount: Double, unit: FoodUnit, calories: Int, caloriesPerUnit: Int? = nil) {
         self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         self.foodType = foodType
         self.amount = max(0, amount)
         self.unit = unit
         self.calories = max(0, calories)
+        self.caloriesPerUnit = caloriesPerUnit
     }
 }
 
@@ -57,11 +64,15 @@ struct MedicineEventData: Hashable, Codable {
     var name: String
     var dosage: Double
     var unit: String
+    var savedOptionID: UUID?
+    var doseInterval: MedicationDoseInterval?
 
-    init(name: String, dosage: Double, unit: String) {
+    init(name: String, dosage: Double, unit: String, savedOptionID: UUID? = nil, doseInterval: MedicationDoseInterval? = nil) {
         self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         self.dosage = max(0, dosage)
         self.unit = unit.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.savedOptionID = savedOptionID
+        self.doseInterval = doseInterval
     }
 }
 
@@ -79,6 +90,8 @@ struct CareEvent: Identifiable, Hashable {
     var startTime: Date
     var endTime: Date?
     var data: CareEventData
+    var doseTimingOverrideAt: Date?
+    var doseTimingOverrideMessage: String?
 
     init(
         id: UUID = UUID(),
@@ -106,30 +119,65 @@ enum SavedOptionData: Hashable {
 
 struct SavedFoodData: Hashable {
     var name: String
+    var officialName: String?
     var unit: FoodUnit
     var caloriesPerUnit: Int
     var foodType: FoodType
 
-    init(name: String, unit: FoodUnit, caloriesPerUnit: Int, foodType: FoodType) {
+    init(name: String, unit: FoodUnit, caloriesPerUnit: Int, foodType: FoodType, officialName: String? = nil) {
         self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         self.unit = unit
         self.caloriesPerUnit = max(0, caloriesPerUnit)
         self.foodType = foodType
+        self.officialName = officialName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if self.officialName?.isEmpty == true { self.officialName = nil }
     }
 }
 
 struct SavedMedicineData: Hashable {
     var name: String
+    var purpose: String?
     var dosage: Double
     var unit: String
     var cadence: MedicineCadence?
+    var doseInterval: MedicationDoseInterval?
+    var petDoseIntervals: [PetMedicationDoseInterval]
 
-    init(name: String, dosage: Double, unit: String, cadence: MedicineCadence? = nil) {
+    init(name: String, dosage: Double, unit: String, cadence: MedicineCadence? = nil, purpose: String? = nil,
+         doseInterval: MedicationDoseInterval? = nil, petDoseIntervals: [PetMedicationDoseInterval] = []) {
         self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         self.dosage = max(0, dosage)
         self.unit = unit.trimmingCharacters(in: .whitespacesAndNewlines)
         self.cadence = cadence
+        self.purpose = purpose?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if self.purpose?.isEmpty == true { self.purpose = nil }
+        self.doseInterval = doseInterval
+        self.petDoseIntervals = petDoseIntervals
     }
+
+    func doseInterval(for petID: UUID?) -> MedicationDoseInterval? {
+        petDoseIntervals.first { $0.petID == petID }?.interval ?? doseInterval
+    }
+}
+
+struct MedicationDoseInterval: Hashable, Codable {
+    var minimumHours: Double
+    var maximumHours: Double
+
+    var isValid: Bool {
+        minimumHours.isFinite && maximumHours.isFinite && minimumHours > 0
+            && maximumHours >= minimumHours && (maximumHours * 3_600).isFinite
+    }
+
+    var summary: String {
+        minimumHours == maximumHours ? "\(minimumHours.formatted()) hours"
+            : "\(minimumHours.formatted())–\(maximumHours.formatted()) hours"
+    }
+}
+
+struct PetMedicationDoseInterval: Hashable, Codable {
+    var petID: UUID
+    var interval: MedicationDoseInterval
 }
 
 struct SavedEventOption: Identifiable, Hashable {

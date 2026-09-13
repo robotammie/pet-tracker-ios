@@ -47,7 +47,10 @@ struct PetSelectionSection: View {
                 }
             } label: {
                 Label(title, systemImage: includesHousehold ? "person.2" : "person")
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
             }
+            .accessibilityIdentifier("eventCreation.destination")
         }
     }
 }

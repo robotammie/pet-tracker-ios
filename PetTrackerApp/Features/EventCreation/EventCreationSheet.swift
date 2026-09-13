@@ -7,13 +7,14 @@ struct EventCreationSheet: View {
     var body: some View {
         NavigationStack {
             destination
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") {
-                        dismiss()
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close") {
+                            dismiss()
+                        }
+                        .accessibilityIdentifier("eventCreation.close")
                     }
                 }
-            }
         }
     }
 

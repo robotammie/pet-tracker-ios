@@ -13,11 +13,17 @@ struct NotificationsView: View {
                     ContentUnavailableView("No active reminders", systemImage: "bell.slash")
                 } else {
                     ForEach(activeReminders) { reminder in
-                        ReminderSummaryRow(reminder: reminder)
+                        ReminderSummaryRow(
+                            reminder: reminder,
+                            rowAccessibilityIdentifier: "reminder.active.\(reminder.id.uuidString)"
+                        ) {
+                            store.completeReminderNowAndRefresh(id: reminder.id)
+                        }
                             .swipeActions(edge: .trailing) {
                                 Button("Done") {
                                     startCompletion(reminder)
                                 }
+                                .accessibilityIdentifier("reminder.complete")
                                 .tint(.green)
 
                                 Button("Ignore") {
@@ -47,6 +53,8 @@ struct NotificationsView: View {
                     } else {
                         ForEach(completedReminders) { reminder in
                             ReminderSummaryRow(reminder: reminder)
+                                .accessibilityElement(children: .combine)
+                                .accessibilityIdentifier("reminder.completed.\(reminder.id.uuidString)")
                         }
                     }
                 } label: {
@@ -139,6 +147,7 @@ private struct ReminderCompletionSheet: View {
                     }
                 }
             }
+            .medicationTimingAlert(.reminderCompletion)
             .navigationTitle("Mark Complete")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -153,11 +162,13 @@ private struct ReminderCompletionSheet: View {
                             draft.reminder,
                             completedPetIDs: selectedPetIDs,
                             completionTime: completionTime,
-                            createsEvent: draft.reminder.mode == .reminderToEvent
+                            createsEvent: draft.reminder.mode == .reminderToEvent,
+                            presentation: .reminderCompletion,
+                            onSaved: { dismiss() }
                         )
-                        dismiss()
                     }
                     .disabled(!canComplete)
+                    .accessibilityIdentifier("reminderCompletion.done")
                 }
             }
         }

@@ -1,8 +1,16 @@
 import SwiftUI
 
+private enum PetDetailSection { case care, health }
+
 struct PetDetailView: View {
     @EnvironmentObject private var store: PetCareStore
     let pet: Pet
+    @State private var selectedSection: PetDetailSection
+
+    init(pet: Pet, initialHealth: Bool = false) {
+        self.pet = pet
+        _selectedSection = State(initialValue: initialHealth ? .health : .care)
+    }
 
     private var events: [CareEvent] {
         store.events(for: pet)
@@ -13,6 +21,20 @@ struct PetDetailView: View {
     }
 
     var body: some View {
+        VStack(spacing: 0) {
+            Picker("History", selection: $selectedSection) {
+                Text("Care").tag(PetDetailSection.care)
+                Text("Health").tag(PetDetailSection.health)
+            }
+            .pickerStyle(.segmented).padding(.horizontal).padding(.vertical, 8)
+            .accessibilityIdentifier("petDetail.history")
+            if selectedSection == .health { HealthTimelineView(pet: pet) }
+            else { careList }
+        }
+        .navigationTitle(pet.name)
+    }
+
+    private var careList: some View {
         List {
             Section {
                 HStack {
@@ -39,7 +61,6 @@ struct PetDetailView: View {
                 }
             }
         }
-        .navigationTitle(pet.name)
     }
 
     private var goalSummary: String {

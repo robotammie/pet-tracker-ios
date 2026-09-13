@@ -49,12 +49,14 @@ struct SettingsView: View {
                 } label: {
                     Label("Food", systemImage: "fork.knife")
                 }
+                .accessibilityIdentifier("settings.savedOptions.Food")
 
                 NavigationLink {
                     SavedOptionsListView(eventType: .medicine)
                 } label: {
                     Label("Medicine", systemImage: "pills")
                 }
+                .accessibilityIdentifier("settings.savedOptions.Medicine")
             }
 
 #if DEBUG
@@ -156,7 +158,7 @@ private extension CareEventType {
         case .food:
             return "fork.knife"
         case .litter:
-            return "sparkles"
+            return "tray"
         case .medicine:
             return "pills"
         }

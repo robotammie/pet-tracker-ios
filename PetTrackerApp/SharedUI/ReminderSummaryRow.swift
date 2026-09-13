@@ -1,12 +1,18 @@
 import SwiftUI
 
 struct ReminderSummaryRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let reminder: Reminder
     var now: Date = .now
     var showsEventIcon = false
+    var rowAccessibilityIdentifier: String?
+    var onCompleteNow: (() -> Void)?
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        let layout = dynamicTypeSize.isAccessibilitySize && onCompleteNow != nil
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 12))
+        return layout {
             if showsEventIcon, let eventType = reminder.eventType {
                 Image(systemName: eventType.homeSystemImage)
                     .foregroundStyle(.secondary)
@@ -14,22 +20,40 @@ struct ReminderSummaryRow: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(reminder.title)
-                        .font(.headline)
-                    Spacer()
-                    statusText
-                }
-
-                HStack(spacing: 6) {
-                    Text(reminder.mode.rawValue)
-                    if let eventType = reminder.eventType {
-                        Text(eventType.rawValue)
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(reminder.title)
+                            .font(.headline)
+                        statusText
+                    }
+                } else {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(reminder.title)
+                            .font(.headline)
+                        Spacer()
+                        statusText
                     }
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
 
+                Text([reminder.mode.rawValue, reminder.eventType?.rawValue]
+                    .compactMap { $0 }.joined(separator: " · "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier(rowAccessibilityIdentifier ?? "")
+
+            if let onCompleteNow {
+                Button(action: onCompleteNow) {
+                    Image(systemName: "checkmark.circle")
+                        .font(.title2)
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Complete \(reminder.title) now")
+                .accessibilityHint(reminder.targets.count > 1 ? "Completes all remaining pets at the current time" : "Uses the current time")
+                .accessibilityIdentifier("reminder.completeNow.\(reminder.id.uuidString)")
             }
         }
         .padding(.vertical, 2)

@@ -17,7 +17,8 @@ struct SavedOptionEditorView: View {
     var body: some View {
         Form {
             Section("Details") {
-                TextField("Name", text: $viewModel.name)
+                TextField("Display name", text: $viewModel.name)
+                    .accessibilityIdentifier("savedOption.name")
             }
 
             switch viewModel.eventType {
@@ -25,6 +26,7 @@ struct SavedOptionEditorView: View {
                 foodFields
             case .medicine:
                 medicineFields
+                doseTimingFields
                 reminderFields
             case .litter:
                 Text("Litter does not use saved options.")
@@ -51,28 +53,45 @@ struct SavedOptionEditorView: View {
                     }
 
                     store.saveSavedOptionAndRefresh(savedOption)
-                    if option == nil, let reminder = viewModel.makeAutoqueuedReminder() {
+                    if option == nil, let reminder = viewModel.makeAutoqueuedReminder(savedOption: savedOption) {
                         store.saveReminderAndRefresh(reminder)
                     }
                     dismiss()
                 }
                 .disabled(!viewModel.canSave())
+                .accessibilityIdentifier("savedOption.save")
             }
         }
     }
 
     private var foodFields: some View {
         Section("Food") {
+            TextField("Official name (optional)", text: $viewModel.officialFoodName, axis: .vertical)
+                .accessibilityIdentifier("savedOption.food.officialName")
+
             Picker("Type", selection: $viewModel.foodType) {
                 ForEach(FoodType.allCases) { type in
                     Text(type.rawValue).tag(type)
                 }
             }
 
+            .onChange(of: viewModel.foodType) { _, foodType in
+                if !FoodUnit.options(for: foodType).contains(viewModel.foodUnit) {
+                    viewModel.foodUnit = .ounce
+                    viewModel.caloriesPerUnit = 0
+                }
+            }
+
             Picker("Unit", selection: $viewModel.foodUnit) {
-                ForEach(FoodUnit.allCases) { unit in
+                ForEach(FoodUnit.options(for: viewModel.foodType)) { unit in
                     Text(unit.rawValue).tag(unit)
                 }
+            }
+
+            if viewModel.foodUnit == .can {
+                Text("Use calories for one whole can of this food. Fractional cans can be logged; no unit conversion is applied.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
 
             Stepper(value: $viewModel.caloriesPerUnit, in: 0...3000, step: 5) {
@@ -83,6 +102,9 @@ struct SavedOptionEditorView: View {
 
     private var medicineFields: some View {
         Section("Medicine") {
+            TextField("Type / purpose (optional)", text: $viewModel.medicinePurpose)
+                .accessibilityIdentifier("savedOption.medicine.purpose")
+
             HStack {
                 Text("Default dose")
                 Spacer()
@@ -120,6 +142,46 @@ struct SavedOptionEditorView: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    private var doseTimingFields: some View {
+        Section("Dose timing") {
+            Toggle("Check dose intervals", isOn: $viewModel.usesDoseTiming)
+                .accessibilityIdentifier("medicineTiming.enabled")
+            if viewModel.usesDoseTiming {
+                MedicationDoseIntervalFields(minimumHours: $viewModel.minimumDoseHours,
+                                             maximumHours: $viewModel.maximumDoseHours)
+                if !viewModel.configuredDoseInterval.isValid {
+                    Text("Enter positive hours; the maximum must be at least the minimum.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            DisclosureGroup("Pet-specific intervals") {
+                ForEach(store.pets) { pet in
+                    Toggle("Different interval for \(pet.name)", isOn: Binding(
+                        get: { viewModel.petDoseIntervals.contains { $0.petID == pet.id } },
+                        set: { viewModel.setPetDoseIntervalEnabled($0, petID: pet.id) }
+                    ))
+                    if viewModel.petDoseIntervals.contains(where: { $0.petID == pet.id }) {
+                        MedicationDoseIntervalFields(
+                            minimumHours: petDoseHoursBinding(petID: pet.id, minimum: true),
+                            maximumHours: petDoseHoursBinding(petID: pet.id, minimum: false),
+                            accessibilityPrefix: "medicineTiming.\(pet.id.uuidString)"
+                        )
+                    }
+                }
+            }
+            Text("Use your veterinarian's prescribed interval. Set both values equal for a fixed interval. Pet-specific intervals take precedence. Without a configured interval, no timing check is made.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func petDoseHoursBinding(petID: UUID, minimum: Bool) -> Binding<Double> {
+        Binding(get: {
+            let interval = viewModel.petDoseIntervals.first { $0.petID == petID }?.interval
+            return (minimum ? interval?.minimumHours : interval?.maximumHours) ?? 0
+        }, set: { viewModel.setPetDoseHours($0, petID: petID, minimum: minimum) })
     }
 
     private var reminderPetTitle: String {

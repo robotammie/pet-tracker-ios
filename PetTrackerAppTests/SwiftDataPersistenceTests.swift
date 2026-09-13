@@ -176,6 +176,28 @@ final class SwiftDataPersistenceTests: XCTestCase {
         XCTAssertEqual(repository.listReminders().first?.ignoredUntil, ignoredUntil)
     }
 
+    func testOptionMetadataAndCanUnitRoundTripWithoutChangingEventSnapshots() throws {
+        let context = try makeContext()
+        let options = SwiftDataSavedEventOptionRepository(context: context)
+        let events = SwiftDataCareEventRepository(context: context)
+        let food = SavedEventOption(eventType: .food, data: .food(SavedFoodData(
+            name: "Hill's", unit: .can, caloriesPerUnit: 90, foodType: .wet,
+            officialName: "Hill's Gastrointestinal Biome for Adult Cats")))
+        let medicine = SavedEventOption(eventType: .medicine, data: .medicine(SavedMedicineData(
+            name: "Pill", dosage: 1, unit: "tablet", purpose: "Antibiotic")))
+        options.saveSavedOption(food)
+        options.saveSavedOption(medicine)
+        XCTAssertEqual(Set(options.listSavedOptions(includeDeleted: false)), Set([food, medicine]))
+        let event = CareEvent(type: .food, petID: nil, data: .food(FoodEventData(
+            name: "Hill's", foodType: .wet, amount: 0.5, unit: .can, calories: 45)))
+        events.saveEvent(event)
+        var edited = food
+        edited.data = .food(SavedFoodData(name: "New display name", unit: .can,
+                                         caloriesPerUnit: 100, foodType: .wet, officialName: "New official name"))
+        options.saveSavedOption(edited)
+        XCTAssertEqual(events.listEvents(), [event])
+    }
+
     private func makeContext() throws -> ModelContext {
         let schema = Schema([
             PetRecord.self,

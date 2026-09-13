@@ -3,11 +3,23 @@ import Foundation
 final class PetCareStore: ObservableObject {
     @Published var pets: [Pet]
     @Published var events: [CareEvent]
+    @Published var healthEntries: [HealthEntry]
     @Published var savedOptions: [SavedEventOption]
     @Published var reminders: [Reminder]
     @Published var settings: UserSettings
+    @Published var medicationTimingPrompt: MedicationTimingPrompt?
+
+    private struct PendingMedicationWrite {
+        var presentation: MedicationTimingPresentation
+        var candidates: [CareEvent]
+        var warnings: [MedicationTimingWarning]
+        var commit: ([CareEvent]) -> Bool
+        var onSaved: (() -> Void)?
+    }
+    private var pendingMedicationWrite: PendingMedicationWrite?
 
     private var petRepository: PetRepository?
+    private var healthRepository: HealthEntryRepository?
     private var eventRepository: CareEventRepository?
     private var savedOptionRepository: SavedEventOptionRepository?
     private var reminderRepository: ReminderRepository?
@@ -17,6 +29,7 @@ final class PetCareStore: ObservableObject {
     init(
         pets: [Pet] = [],
         events: [CareEvent] = [],
+        healthEntries: [HealthEntry] = [],
         savedOptions: [SavedEventOption] = [],
         reminders: [Reminder] = [],
         settings: UserSettings = .defaults,
@@ -24,6 +37,7 @@ final class PetCareStore: ObservableObject {
     ) {
         self.pets = pets
         self.events = events
+        self.healthEntries = healthEntries
         self.savedOptions = savedOptions
         self.reminders = reminders
         self.settings = settings
@@ -34,8 +48,10 @@ final class PetCareStore: ObservableObject {
         petRepository: PetRepository,
         eventRepository: CareEventRepository,
         savedOptionRepository: SavedEventOptionRepository,
-        reminderRepository: ReminderRepository
+        reminderRepository: ReminderRepository,
+        healthRepository: HealthEntryRepository? = nil
     ) {
+        self.healthRepository = healthRepository
         self.petRepository = petRepository
         self.eventRepository = eventRepository
         self.savedOptionRepository = savedOptionRepository
@@ -43,6 +59,7 @@ final class PetCareStore: ObservableObject {
     }
 
     func refreshFromPersistence() {
+        if let healthRepository { healthEntries = healthRepository.listHealthEntries() }
         if let petRepository {
             pets = petRepository.listPets()
         }
@@ -57,6 +74,22 @@ final class PetCareStore: ObservableObject {
 
         if let reminderRepository {
             reminders = reminderRepository.listReminders(includeMuted: true)
+        }
+    }
+
+    func healthEntries(for petID: UUID) -> [HealthEntry] {
+        healthEntries.filter { $0.petID == petID }.sorted { $0.happenedAt > $1.happenedAt }
+    }
+
+    func saveHealthEntryAndRefresh(_ entry: HealthEntry) throws {
+        guard entry.isValid, pets.contains(where: { $0.id == entry.petID }) else {
+            throw HealthSaveError.invalidEntry
+        }
+        if let healthRepository {
+            try healthRepository.saveHealthEntry(entry)
+            refreshFromPersistence()
+        } else {
+            upsert(entry, in: &healthEntries)
         }
     }
 
@@ -124,21 +157,73 @@ final class PetCareStore: ObservableObject {
             .sorted { $0.updatedAt > $1.updatedAt }
     }
 
-    func saveCareEventAndRefresh(_ event: CareEvent) {
-        if let eventRepository {
-            eventRepository.saveEvent(event)
-            refreshFromPersistence()
-        } else {
-            saveEvent(event)
+    @discardableResult
+    func saveCareEventAndRefresh(_ event: CareEvent, presentation: MedicationTimingPresentation = .main, onSaved: (() -> Void)? = nil) -> Bool {
+        saveCareEventsAndRefresh([event], presentation: presentation, onSaved: onSaved)
+    }
+
+    @discardableResult
+    func saveCareEventsAndRefresh(_ candidates: [CareEvent], presentation: MedicationTimingPresentation = .main, onSaved: (() -> Void)? = nil) -> Bool {
+        medicationCheckedWrite(candidates, presentation: presentation, onSaved: onSaved) { [weak self] accepted in
+            guard let self else { return false }
+            self.persistEvents(accepted)
+            self.refreshFromPersistence()
+            return true
         }
     }
 
-    func saveCareEventsAndRefresh(_ events: [CareEvent]) {
+    func cancelMedicationTimingWrite() {
+        pendingMedicationWrite = nil
+        medicationTimingPrompt = nil
+    }
+
+    func confirmMedicationTimingWrite(at date: Date = .now) {
+        guard var pending = pendingMedicationWrite else { return }
+        let candidates = pending.candidates.map { MedicationTimingService.resolved($0, options: savedOptions) }
+        let currentWarnings = MedicationTimingService.warnings(for: candidates, existing: events, options: savedOptions, pets: pets)
+        if currentWarnings != pending.warnings {
+            // A changed prescription/history requires a fresh acknowledgement.
+            pending.candidates = candidates
+            pending.warnings = currentWarnings
+            pendingMedicationWrite = pending
+            if !currentWarnings.isEmpty {
+                medicationTimingPrompt = MedicationTimingPrompt(warnings: currentWarnings, presentation: pending.presentation)
+                return
+            }
+        }
+        let accepted = candidates.map { candidate in
+            var event = candidate
+            let messages = currentWarnings.filter { $0.eventID == event.id }.map(\.message)
+            if !messages.isEmpty {
+                event.doseTimingOverrideAt = date
+                event.doseTimingOverrideMessage = messages.joined(separator: "\n\n")
+            }
+            return event
+        }
+        cancelMedicationTimingWrite()
+        if pending.commit(accepted) { pending.onSaved?() }
+    }
+
+    private func medicationCheckedWrite(_ candidates: [CareEvent], presentation: MedicationTimingPresentation, onSaved: (() -> Void)?, commit: @escaping ([CareEvent]) -> Bool) -> Bool {
+        let resolved = candidates.map { MedicationTimingService.resolved($0, options: savedOptions) }
+        let warnings = MedicationTimingService.warnings(for: resolved, existing: events, options: savedOptions, pets: pets)
+        guard warnings.isEmpty else {
+            pendingMedicationWrite = PendingMedicationWrite(presentation: presentation, candidates: resolved, warnings: warnings, commit: commit, onSaved: onSaved)
+            medicationTimingPrompt = MedicationTimingPrompt(warnings: warnings, presentation: presentation)
+            return false
+        }
+        if commit(resolved) {
+            onSaved?()
+            return true
+        }
+        return false
+    }
+
+    private func persistEvents(_ accepted: [CareEvent]) {
         if let eventRepository {
-            events.forEach(eventRepository.saveEvent)
-            refreshFromPersistence()
+            accepted.forEach(eventRepository.saveEvent)
         } else {
-            events.forEach(saveEvent)
+            accepted.forEach(saveEvent)
         }
     }
 
@@ -162,41 +247,48 @@ final class PetCareStore: ObservableObject {
         syncLocalNotifications()
     }
 
+    func completeReminderNowAndRefresh(id: UUID, now: Date = .now) {
+        guard let reminder = reminders.first(where: { $0.id == id && $0.isActive }) else {
+            return
+        }
+        completeReminderAndRefresh(
+            reminder,
+            completedPetIDs: Set(reminder.incompleteTargets.map(\.petID)),
+            completionTime: now,
+            createsEvent: reminder.mode == .reminderToEvent
+        )
+    }
+
+    @discardableResult
     func completeReminderAndRefresh(
         _ reminder: Reminder,
         completedPetIDs: Set<UUID>,
         completionTime: Date,
-        createsEvent: Bool
-    ) {
+        createsEvent: Bool,
+        presentation: MedicationTimingPresentation = .main,
+        onSaved: (() -> Void)? = nil
+    ) -> Bool {
+        guard let current = reminders.first(where: { $0.id == reminder.id && $0.isActive }) else { return false }
         let result = ReminderActionService.complete(
-            reminder,
+            current,
             completedPetIDs: completedPetIDs,
             completionTime: completionTime,
             createsEvent: createsEvent
         )
-
-        result.events.forEach { event in
-            if let eventRepository {
-                eventRepository.saveEvent(event)
+        return medicationCheckedWrite(result.events, presentation: presentation, onSaved: onSaved) { [weak self] accepted in
+            guard let self, self.reminders.first(where: { $0.id == current.id }) == current else { return false }
+            self.persistEvents(accepted)
+            if let repository = self.reminderRepository {
+                repository.saveReminder(result.updatedReminder)
+                if let history = result.historyReminder { repository.saveReminder(history) }
             } else {
-                saveEvent(event)
+                self.saveReminder(result.updatedReminder)
+                if let history = result.historyReminder { self.saveReminder(history) }
             }
+            self.refreshFromPersistence()
+            self.syncLocalNotifications()
+            return true
         }
-
-        if let reminderRepository {
-            reminderRepository.saveReminder(result.updatedReminder)
-            if let historyReminder = result.historyReminder {
-                reminderRepository.saveReminder(historyReminder)
-            }
-            refreshFromPersistence()
-        } else {
-            saveReminder(result.updatedReminder)
-            if let historyReminder = result.historyReminder {
-                saveReminder(historyReminder)
-            }
-        }
-
-        syncLocalNotifications()
     }
 
     func ignoreReminderAndRefresh(
@@ -256,11 +348,13 @@ final class PetCareStore: ObservableObject {
     }
 
     func resetDevelopmentData() {
+        cancelMedicationTimingWrite()
         if let developmentResetAction {
             developmentResetAction()
         } else {
             pets.removeAll()
             events.removeAll()
+            healthEntries.removeAll()
             savedOptions.removeAll()
             reminders.removeAll()
             let preview = PetCareStore.preview
@@ -363,4 +457,9 @@ private extension PetCareStore {
             collection.append(item)
         }
     }
+}
+
+private enum HealthSaveError: LocalizedError {
+    case invalidEntry
+    var errorDescription: String? { "Choose a pet, enter a title, and use a positive weight when recording a weight entry." }
 }

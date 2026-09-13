@@ -35,7 +35,8 @@ enum SwiftDataMapper {
                 foodType: foodType,
                 amount: amount,
                 unit: unit,
-                calories: calories
+                calories: calories,
+                caloriesPerUnit: record.foodCaloriesPerUnit
             ))
 
         case .litter:
@@ -52,11 +53,13 @@ enum SwiftDataMapper {
             data = .medicine(MedicineEventData(
                 name: name,
                 dosage: dosage,
-                unit: unit
+                unit: unit,
+                savedOptionID: record.medicineSavedOptionID,
+                doseInterval: doseInterval(minimum: record.medicineMinimumDoseHours, maximum: record.medicineMaximumDoseHours)
             ))
         }
 
-        return CareEvent(
+        var event = CareEvent(
             id: record.id,
             type: type,
             petID: record.petID,
@@ -65,6 +68,9 @@ enum SwiftDataMapper {
             endTime: record.endTime,
             data: data
         )
+        event.doseTimingOverrideAt = record.doseTimingOverrideAt
+        event.doseTimingOverrideMessage = record.doseTimingOverrideMessage
+        return event
     }
 
     static func update(_ record: CareEventRecord, with event: CareEvent) {
@@ -73,15 +79,21 @@ enum SwiftDataMapper {
         record.createdAt = event.createdAt
         record.startTime = event.startTime
         record.endTime = event.endTime
+        record.doseTimingOverrideAt = event.doseTimingOverrideAt
+        record.doseTimingOverrideMessage = event.doseTimingOverrideMessage
 
         record.foodName = nil
         record.foodTypeRawValue = nil
         record.foodAmount = nil
         record.foodUnitRawValue = nil
         record.foodCalories = nil
+        record.foodCaloriesPerUnit = nil
         record.medicineName = nil
         record.medicineDosage = nil
         record.medicineUnit = nil
+        record.medicineSavedOptionID = nil
+        record.medicineMinimumDoseHours = nil
+        record.medicineMaximumDoseHours = nil
 
         switch event.data {
         case let .food(data):
@@ -90,6 +102,7 @@ enum SwiftDataMapper {
             record.foodAmount = data.amount
             record.foodUnitRawValue = data.unit.rawValue
             record.foodCalories = data.calories
+            record.foodCaloriesPerUnit = data.caloriesPerUnit
 
         case .litter:
             break
@@ -97,7 +110,10 @@ enum SwiftDataMapper {
         case let .medicine(data):
             record.medicineName = data.name
             record.medicineDosage = data.dosage
+            record.medicineSavedOptionID = data.savedOptionID
             record.medicineUnit = data.unit
+            record.medicineMinimumDoseHours = data.doseInterval?.minimumHours
+            record.medicineMaximumDoseHours = data.doseInterval?.maximumHours
         }
     }
 
@@ -124,7 +140,8 @@ enum SwiftDataMapper {
                 name: name,
                 unit: unit,
                 caloriesPerUnit: caloriesPerUnit,
-                foodType: foodType
+                foodType: foodType,
+                officialName: record.foodOfficialName
             ))
 
         case .medicine:
@@ -139,7 +156,11 @@ enum SwiftDataMapper {
                 name: name,
                 dosage: dosage,
                 unit: unit,
-                cadence: medicineCadence(from: record)
+                cadence: medicineCadence(from: record),
+                purpose: record.medicinePurpose,
+                doseInterval: doseInterval(minimum: record.medicineMinimumDoseHours, maximum: record.medicineMaximumDoseHours),
+                petDoseIntervals: record.medicinePetDoseIntervalsJSON.flatMap { $0.data(using: .utf8) }
+                    .flatMap { try? JSONDecoder().decode([PetMedicationDoseInterval].self, from: $0) } ?? []
             ))
 
         case .litter:
@@ -163,12 +184,18 @@ enum SwiftDataMapper {
         record.deletedAt = option.deletedAt
 
         record.foodName = nil
+        record.foodOfficialName = nil
         record.foodUnitRawValue = nil
         record.foodCaloriesPerUnit = nil
         record.foodTypeRawValue = nil
         record.medicineName = nil
+        record.medicinePurpose = nil
+        record.medicinePetDoseIntervalsJSON = nil
         record.medicineDosage = nil
         record.medicineUnit = nil
+        record.medicineSavedOptionID = nil
+        record.medicineMinimumDoseHours = nil
+        record.medicineMaximumDoseHours = nil
         record.medicineRecurrenceKind = nil
         record.medicineRecurrenceValue = nil
         record.medicineRecurrenceUnitRawValue = nil
@@ -177,14 +204,20 @@ enum SwiftDataMapper {
         switch option.data {
         case let .food(data):
             record.foodName = data.name
+            record.foodOfficialName = data.officialName
             record.foodUnitRawValue = data.unit.rawValue
             record.foodCaloriesPerUnit = data.caloriesPerUnit
             record.foodTypeRawValue = data.foodType.rawValue
 
         case let .medicine(data):
             record.medicineName = data.name
+            record.medicinePurpose = data.purpose
             record.medicineDosage = data.dosage
+            record.medicineSavedOptionID = option.id
+            record.medicinePetDoseIntervalsJSON = (try? JSONEncoder().encode(data.petDoseIntervals)).flatMap { String(data: $0, encoding: .utf8) }
             record.medicineUnit = data.unit
+            record.medicineMinimumDoseHours = data.doseInterval?.minimumHours
+            record.medicineMaximumDoseHours = data.doseInterval?.maximumHours
             apply(data.cadence?.rule, toMedicine: record)
         }
     }
@@ -233,6 +266,9 @@ enum SwiftDataMapper {
         record.medicineName = nil
         record.medicineDosage = nil
         record.medicineUnit = nil
+        record.medicineSavedOptionID = nil
+        record.medicineMinimumDoseHours = nil
+        record.medicineMaximumDoseHours = nil
         record.recurrenceKind = nil
         record.recurrenceValue = nil
         record.recurrenceUnitRawValue = nil
@@ -285,7 +321,9 @@ enum SwiftDataMapper {
             return .medicine(MedicineEventData(
                 name: name,
                 dosage: dosage,
-                unit: unit
+                unit: unit,
+                savedOptionID: record.medicineSavedOptionID,
+                doseInterval: doseInterval(minimum: record.medicineMinimumDoseHours, maximum: record.medicineMaximumDoseHours)
             ))
         }
     }
@@ -411,7 +449,10 @@ enum SwiftDataMapper {
         case let .medicine(data):
             record.medicineName = data.name
             record.medicineDosage = data.dosage
+            record.medicineSavedOptionID = data.savedOptionID
             record.medicineUnit = data.unit
+            record.medicineMinimumDoseHours = data.doseInterval?.minimumHours
+            record.medicineMaximumDoseHours = data.doseInterval?.maximumHours
 
         case nil:
             break
@@ -427,6 +468,9 @@ enum SwiftDataMapper {
         record.medicineName = nil
         record.medicineDosage = nil
         record.medicineUnit = nil
+        record.medicineSavedOptionID = nil
+        record.medicineMinimumDoseHours = nil
+        record.medicineMaximumDoseHours = nil
 
         switch data {
         case let .food(data):
@@ -442,7 +486,10 @@ enum SwiftDataMapper {
         case let .medicine(data):
             record.medicineName = data.name
             record.medicineDosage = data.dosage
+            record.medicineSavedOptionID = data.savedOptionID
             record.medicineUnit = data.unit
+            record.medicineMinimumDoseHours = data.doseInterval?.minimumHours
+            record.medicineMaximumDoseHours = data.doseInterval?.maximumHours
 
         case nil:
             break
@@ -472,7 +519,9 @@ enum SwiftDataMapper {
             return .medicine(MedicineEventData(
                 name: name,
                 dosage: dosage,
-                unit: unit
+                unit: unit,
+                savedOptionID: record.medicineSavedOptionID,
+                doseInterval: doseInterval(minimum: record.medicineMinimumDoseHours, maximum: record.medicineMaximumDoseHours)
             ))
         }
 
@@ -492,6 +541,12 @@ enum SwiftDataMapper {
         case nil:
             break
         }
+    }
+
+    private static func doseInterval(minimum: Double?, maximum: Double?) -> MedicationDoseInterval? {
+        guard let minimum, let maximum else { return nil }
+        let interval = MedicationDoseInterval(minimumHours: minimum, maximumHours: maximum)
+        return interval.isValid ? interval : nil
     }
 
     private static func encodeMinutes(_ times: [DateComponents]) -> String {

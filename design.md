@@ -116,8 +116,9 @@ Editing saved food or medicine data affects future event creation only. Existing
 
 ##### Food
 Saved food fields:
-- `name`: string
-- `unit`: enum, `cup` or `oz`
+- `name`: string, the user-given display name used in pickers and event snapshots.
+- `official_name`: optional string, the full product name shown in saved-option management.
+- `unit`: enum, `cup` or `oz`; wet food also supports `can`.
 - `calories_per_unit`: integer
 - `food_type`: enum, `wet`, `dry`, or `treat`
 
@@ -179,6 +180,7 @@ Future litter-related work:
 ##### Medicine
 Saved medicine fields:
 - `name`: string
+- `purpose`: optional free-text string, such as antibiotic or painkiller.
 - `dosage`: float
 - `unit`: string
 - `cadence`: recurrence-like value, exact storage format TBD.
@@ -326,3 +328,29 @@ Non-requirements that may become later features if feasible. Decisions that woul
 - Android support
     - If there's a best practice for making an app that ports easily to Android, we should do that, but main use case is personal
 - Pet photos in v1
+
+
+## Pre-CloudKit Updates (2026-09-13)
+
+### Stage 5.6 implemented scope
+- Home Due and Reminders Active rows have a checkmark Complete now control. It uses the tap time, completes all remaining targets, logs their stored payloads for reminder-to-event mode, and preserves recurring history/rescheduling rules. Pure reminders do not create events. The existing swipe Done flow remains for selected-pet or backdated completion.
+- Events can be filtered by All pets (including Household), Household only, or one pet's own events. This filter is distinct from pet detail, which includes household food.
+- Wet food can use fractional cans, with calories specified per whole can; no conversion between cans, ounces, and cups is attempted. Dry food and treats continue to use cups/ounces.
+- Official food name and medication purpose are optional saved-option metadata. Existing event payloads keep their display names, doses, and stored calories. Changing metadata does not rewrite history.
+
+### Stages 5.7–5.9 authorized
+The user authorized 5.7–5.8 with testing between stages, then approved option A and the smaller Health & Life scope for 5.9.
+
+**Past-event editing (Stage 5.7 implemented):** tap an Events row to edit date/time, scope, name, and subtype values. Preserve ID and createdAt; retain the event's historical snapshot rather than loading current saved-option values. Food supports amount/unit/calorie editing, medicine requires a pet and positive dose/unit, and litter remains household-only. Original events lack a calories-per-unit snapshot, so the editor must not silently recalculate old calories from the current food option. Add an optional rate snapshot for newly logged food; for older entries, let the user confirm/edit stored calories. Save through the existing repository upsert and refresh grouping/totals. Event edits do not rewrite reminder completion history or reschedule past reminders.
+
+**Medication timing (Stage 5.8 implemented):** add structured minimum/maximum hours between doses (both 12 for a fixed interval; 8 and 12 for a range), with validation and a stable saved-medication ID on logged events/targets. Optional per-cat prescription overrides take precedence over the shared interval. The warning checks only the same medication and cat, as requested. Evaluate the proposed event timestamp, including backdated entries and neighboring doses when editing, excluding the edited event itself. Show prior dose, elapsed time, and the entered minimum interval; allow Cancel or Log anyway. Apply the check to manual logging, multi-pet logging, reminder completion, and Complete now before any writes. Batch warnings should identify affected pets and save once after confirmation. Store an override acknowledgement/reason with the event. No configured interval means no timing assertion; never label an unchecked dose safe. Legacy entries are resolved by trimmed, case-insensitive names only when exactly one saved medication matches, including deleted options. Resolution does not rewrite history automatically; newly saved events acquire the identity. Ambiguous candidates and nearby ambiguous historical doses require acknowledgement. A linked ID survives name edits. Checks use the current configured interval when its saved option exists, otherwise the linked interval snapshot. The maximum defines the displayed next-dose window; early warnings use the minimum. A disabled/unconfigured interval makes no timing check. Overrides store accepted warning text and acknowledgement time; editing does not erase prior acknowledgement metadata, which is shown as a recorded override rather than a safety status. Different-medication interactions are outside personal-use scope; no interaction work is planned.
+
+Intervals should be entered from the veterinarian's prescription, not inferred from a medication's purpose. The FDA recommends asking the veterinarian how much and how often to give a pet's medicine: [Medications for Your Pet — Questions for Your Vet](https://www.fda.gov/animal-veterinary/animal-health-literacy/medications-your-pet-questions-your-vet).
+
+**Health & Life (Stage 5.9 implemented):** Pets → pet detail uses a Care / Health picker. Health has typed weight, vet visits, procedures, and general notes, with required pet/title, happenedAt, immutable createdAt, updatedAt, notes, and optional clinic/provider. Weight is finite and positive, defaults to lb, and retains an explicit lb/kg unit without conversion. Date-grouped history supports category filtering, add with a preselected pet, and tap-to-edit. A separate HealthEntry repository and SwiftData record keep care calories and reminder history independent.
+
+Home Quick Add ends with Health; its editor requires choosing a pet. Recent merges care and health chronologically, keeping the latest entry per pet/category over the last seven days, excluding future timestamps. A health Recent row opens its pet's Health view. Follow-up reminders, charts, attachments, imports, custom categories, and integrations are deferred. Medication interactions have been removed from scope at the user's request.
+
+Detailed approved behavior and acceptance checks are in [health-design-options.md](health-design-options.md).
+
+Stages 5.7–5.8 were verified in sequence: 5.7 passed 48 unit tests and its focused edit/relaunch/cancel UI test before 5.8 began. Final 5.8 verification passed the app/test build, 61 unit tests, and the full 13-test UI suite. Stage 5.9 passed the app/test build, 68 unit tests, and all 14 UI tests. See `plan.md` for logs and coverage.

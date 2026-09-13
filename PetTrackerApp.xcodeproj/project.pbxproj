@@ -56,10 +56,30 @@
 		AA0000000000000000000047 /* LocalNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000048 /* LocalNotificationService.swift */; };
 		AA0000000000000000000048 /* ReminderActionServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000049 /* ReminderActionServiceTests.swift */; };
 		AA0000000000000000000049 /* LocalNotificationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000050 /* LocalNotificationServiceTests.swift */; };
+		AA0000000000000000000050 /* PetTrackerAppUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000052 /* PetTrackerAppUITests.swift */; };
+		A70000000000000000000001 /* CareEventEditDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = B70000000000000000000001 /* CareEventEditDraft.swift */; };
+		A70000000000000000000002 /* CareEventEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B70000000000000000000002 /* CareEventEditorView.swift */; };
+		A70000000000000000000003 /* CareEventEditDraftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B70000000000000000000003 /* CareEventEditDraftTests.swift */; };
+		A70000000000000000000004 /* MedicationTimingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B70000000000000000000004 /* MedicationTimingService.swift */; };
+		A70000000000000000000005 /* MedicationDoseIntervalFields.swift in Sources */ = {isa = PBXBuildFile; fileRef = B70000000000000000000005 /* MedicationDoseIntervalFields.swift */; };
+		A70000000000000000000006 /* MedicationTimingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B70000000000000000000006 /* MedicationTimingServiceTests.swift */; };
+		A70000000000000000000007 /* MedicationTimingAlert.swift in Sources */ = {isa = PBXBuildFile; fileRef = B70000000000000000000007 /* MedicationTimingAlert.swift */; };
+		A90000000000000000000001 /* HealthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B90000000000000000000001 /* HealthModels.swift */; };
+		A90000000000000000000002 /* HealthPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = B90000000000000000000002 /* HealthPersistence.swift */; };
+		A90000000000000000000003 /* HealthEntryEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B90000000000000000000003 /* HealthEntryEditorView.swift */; };
+		A90000000000000000000004 /* HealthTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B90000000000000000000004 /* HealthTimelineView.swift */; };
+		A90000000000000000000005 /* HealthEntryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B90000000000000000000005 /* HealthEntryTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		EE0000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CC0000000000000000000008 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CC0000000000000000000004;
+			remoteInfo = PetTrackerApp;
+		};
+		EE0000000000000000000003 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = CC0000000000000000000008 /* Project object */;
 			proxyType = 1;
@@ -120,6 +140,20 @@
 		BB0000000000000000000048 /* LocalNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/LocalNotificationService.swift; sourceTree = "<group>"; };
 		BB0000000000000000000049 /* ReminderActionServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderActionServiceTests.swift; sourceTree = "<group>"; };
 		BB0000000000000000000050 /* LocalNotificationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNotificationServiceTests.swift; sourceTree = "<group>"; };
+		BB0000000000000000000051 /* PetTrackerAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PetTrackerAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB0000000000000000000052 /* PetTrackerAppUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetTrackerAppUITests.swift; sourceTree = "<group>"; };
+		B70000000000000000000001 /* CareEventEditDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Events/CareEventEditDraft.swift; sourceTree = "<group>"; };
+		B70000000000000000000002 /* CareEventEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Events/CareEventEditorView.swift; sourceTree = "<group>"; };
+		B70000000000000000000003 /* CareEventEditDraftTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareEventEditDraftTests.swift; sourceTree = "<group>"; };
+		B70000000000000000000004 /* MedicationTimingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/MedicationTimingService.swift; sourceTree = "<group>"; };
+		B70000000000000000000005 /* MedicationDoseIntervalFields.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedUI/MedicationDoseIntervalFields.swift; sourceTree = "<group>"; };
+		B70000000000000000000006 /* MedicationTimingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicationTimingServiceTests.swift; sourceTree = "<group>"; };
+		B70000000000000000000007 /* MedicationTimingAlert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedUI/MedicationTimingAlert.swift; sourceTree = "<group>"; };
+		B90000000000000000000001 /* HealthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/HealthModels.swift; sourceTree = "<group>"; };
+		B90000000000000000000002 /* HealthPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence/HealthPersistence.swift; sourceTree = "<group>"; };
+		B90000000000000000000003 /* HealthEntryEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Health/HealthEntryEditorView.swift; sourceTree = "<group>"; };
+		B90000000000000000000004 /* HealthTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Health/HealthTimelineView.swift; sourceTree = "<group>"; };
+		B90000000000000000000005 /* HealthEntryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthEntryTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 		DD0000000000000000000001 /* PetTrackerApp */ = {
@@ -161,6 +195,15 @@
 				BB0000000000000000000043 /* SavedOptionEditorView.swift */,
 				BB0000000000000000000008 /* HomeView.swift */,
 				BB0000000000000000000009 /* EventListView.swift */,
+				B70000000000000000000007 /* MedicationTimingAlert.swift */,
+				B70000000000000000000005 /* MedicationDoseIntervalFields.swift */,
+				B70000000000000000000002 /* CareEventEditorView.swift */,
+				B70000000000000000000004 /* MedicationTimingService.swift */,
+				B90000000000000000000001 /* HealthModels.swift */,
+				B90000000000000000000002 /* HealthPersistence.swift */,
+				B90000000000000000000003 /* HealthEntryEditorView.swift */,
+				B90000000000000000000004 /* HealthTimelineView.swift */,
+				B70000000000000000000001 /* CareEventEditDraft.swift */,
 				BB0000000000000000000010 /* PetListView.swift */,
 				BB0000000000000000000011 /* PetDetailView.swift */,
 				BB0000000000000000000012 /* NotificationsView.swift */,
@@ -185,6 +228,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CC0000000000000000000021 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -193,6 +243,7 @@
 			children = (
 				DD0000000000000000000001 /* PetTrackerApp */,
 				DD0000000000000000000002 /* PetTrackerAppTests */,
+				DD0000000000000000000003 /* PetTrackerAppUITests */,
 				CC0000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -202,6 +253,7 @@
 			children = (
 				BB0000000000000000000000 /* PetTrackerApp.app */,
 				BB0000000000000000000020 /* PetTrackerAppTests.xctest */,
+				BB0000000000000000000051 /* PetTrackerAppUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -212,6 +264,9 @@
 				BB0000000000000000000017 /* DomainValidationTests.swift */,
 				BB0000000000000000000018 /* ReminderSchedulerTests.swift */,
 				BB0000000000000000000019 /* RepositoryTests.swift */,
+				B70000000000000000000006 /* MedicationTimingServiceTests.swift */,
+				B90000000000000000000005 /* HealthEntryTests.swift */,
+				B70000000000000000000003 /* CareEventEditDraftTests.swift */,
 				BB0000000000000000000025 /* SwiftDataPersistenceTests.swift */,
 				BB0000000000000000000038 /* FoodEventFormViewModelTests.swift */,
 				BB0000000000000000000044 /* MedicineEventFormViewModelTests.swift */,
@@ -220,6 +275,14 @@
 				BB0000000000000000000050 /* LocalNotificationServiceTests.swift */,
 			);
 			path = PetTrackerAppTests;
+			sourceTree = "<group>";
+		};
+		DD0000000000000000000003 /* PetTrackerAppUITests */ = {
+			isa = PBXGroup;
+			children = (
+				BB0000000000000000000052 /* PetTrackerAppUITests.swift */,
+			);
+			path = PetTrackerAppUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -264,6 +327,26 @@
 			productReference = BB0000000000000000000020 /* PetTrackerAppTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		CC0000000000000000000024 /* PetTrackerAppUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CC0000000000000000000025 /* Build configuration list for PBXNativeTarget "PetTrackerAppUITests" */;
+			buildPhases = (
+				CC0000000000000000000022 /* Sources */,
+				CC0000000000000000000021 /* Frameworks */,
+				CC0000000000000000000023 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EE0000000000000000000004 /* PBXTargetDependency */,
+			);
+			name = PetTrackerAppUITests;
+			packageProductDependencies = (
+			);
+			productName = PetTrackerAppUITests;
+			productReference = BB0000000000000000000051 /* PetTrackerAppUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -278,6 +361,10 @@
 						CreatedOnToolsVersion = 26.5;
 					};
 					CC0000000000000000000015 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = CC0000000000000000000004;
+					};
+					CC0000000000000000000024 = {
 						CreatedOnToolsVersion = 26.5;
 						TestTargetID = CC0000000000000000000004;
 					};
@@ -299,6 +386,7 @@
 			targets = (
 				CC0000000000000000000004 /* PetTrackerApp */,
 				CC0000000000000000000015 /* PetTrackerAppTests */,
+				CC0000000000000000000024 /* PetTrackerAppUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -312,6 +400,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		CC0000000000000000000018 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC0000000000000000000023 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -361,6 +456,15 @@
 				AA0000000000000000000042 /* SavedOptionEditorView.swift in Sources */,
 				AA0000000000000000000008 /* HomeView.swift in Sources */,
 				AA0000000000000000000009 /* EventListView.swift in Sources */,
+				A70000000000000000000007 /* MedicationTimingAlert.swift in Sources */,
+				A70000000000000000000005 /* MedicationDoseIntervalFields.swift in Sources */,
+				A70000000000000000000002 /* CareEventEditorView.swift in Sources */,
+				A70000000000000000000004 /* MedicationTimingService.swift in Sources */,
+				A90000000000000000000001 /* HealthModels.swift in Sources */,
+				A90000000000000000000002 /* HealthPersistence.swift in Sources */,
+				A90000000000000000000003 /* HealthEntryEditorView.swift in Sources */,
+				A90000000000000000000004 /* HealthTimelineView.swift in Sources */,
+				A70000000000000000000001 /* CareEventEditDraft.swift in Sources */,
 				AA0000000000000000000010 /* PetListView.swift in Sources */,
 				AA0000000000000000000011 /* PetDetailView.swift in Sources */,
 				AA0000000000000000000012 /* NotificationsView.swift in Sources */,
@@ -375,12 +479,23 @@
 				AA0000000000000000000017 /* DomainValidationTests.swift in Sources */,
 				AA0000000000000000000018 /* ReminderSchedulerTests.swift in Sources */,
 				AA0000000000000000000019 /* RepositoryTests.swift in Sources */,
+				A70000000000000000000006 /* MedicationTimingServiceTests.swift in Sources */,
+				A90000000000000000000005 /* HealthEntryTests.swift in Sources */,
+				A70000000000000000000003 /* CareEventEditDraftTests.swift in Sources */,
 				AA0000000000000000000024 /* SwiftDataPersistenceTests.swift in Sources */,
 				AA0000000000000000000037 /* FoodEventFormViewModelTests.swift in Sources */,
 				AA0000000000000000000043 /* MedicineEventFormViewModelTests.swift in Sources */,
 				AA0000000000000000000044 /* SavedOptionFormViewModelTests.swift in Sources */,
 				AA0000000000000000000048 /* ReminderActionServiceTests.swift in Sources */,
 				AA0000000000000000000049 /* LocalNotificationServiceTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC0000000000000000000022 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA0000000000000000000050 /* PetTrackerAppUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -391,6 +506,11 @@
 			isa = PBXTargetDependency;
 			target = CC0000000000000000000004 /* PetTrackerApp */;
 			targetProxy = EE0000000000000000000001 /* PBXContainerItemProxy */;
+		};
+		EE0000000000000000000004 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CC0000000000000000000004 /* PetTrackerApp */;
+			targetProxy = EE0000000000000000000003 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -614,6 +734,52 @@
 			};
 			name = Release;
 		};
+		CC0000000000000000000026 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tammie.PetTrackerAppUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = PetTrackerApp;
+			};
+			name = Debug;
+		};
+		CC0000000000000000000027 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tammie.PetTrackerAppUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = PetTrackerApp;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -640,6 +806,15 @@
 			buildConfigurations = (
 				CC0000000000000000000019 /* Debug */,
 				CC0000000000000000000020 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CC0000000000000000000025 /* Build configuration list for PBXNativeTarget "PetTrackerAppUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CC0000000000000000000026 /* Debug */,
+				CC0000000000000000000027 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

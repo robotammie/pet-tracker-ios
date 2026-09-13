@@ -6,6 +6,7 @@ struct AppTabView: View {
             NavigationStack {
                 HomeView()
             }
+            .accessibilityIdentifier("tab.home")
             .tabItem {
                 Label("Home", systemImage: "house")
             }
@@ -13,6 +14,7 @@ struct AppTabView: View {
             NavigationStack {
                 EventListView()
             }
+            .accessibilityIdentifier("tab.events")
             .tabItem {
                 Label("Events", systemImage: "list.bullet")
             }
@@ -20,6 +22,7 @@ struct AppTabView: View {
             NavigationStack {
                 PetListView()
             }
+            .accessibilityIdentifier("tab.pets")
             .tabItem {
                 Label("Pets", systemImage: "pawprint")
             }
@@ -27,6 +30,7 @@ struct AppTabView: View {
             NavigationStack {
                 NotificationsView()
             }
+            .accessibilityIdentifier("tab.reminders")
             .tabItem {
                 Label("Reminders", systemImage: "bell")
             }
@@ -34,6 +38,7 @@ struct AppTabView: View {
             NavigationStack {
                 SettingsView()
             }
+            .accessibilityIdentifier("tab.settings")
             .tabItem {
                 Label("Settings", systemImage: "gearshape")
             }

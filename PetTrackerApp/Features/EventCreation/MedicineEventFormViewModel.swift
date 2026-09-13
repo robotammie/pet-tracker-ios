@@ -42,7 +42,7 @@ final class MedicineEventFormViewModel: ObservableObject {
             return false
         }
 
-        return selectedPetIDs.contains { (petDosages[$0] ?? 0) > 0 }
+        return selectedPetIDs.contains { (petDosages[$0] ?? 0).isFinite && (petDosages[$0] ?? 0) > 0 }
     }
 
     func makeEvents() -> [CareEvent] {
@@ -53,7 +53,7 @@ final class MedicineEventFormViewModel: ObservableObject {
         return selectedPetIDs.compactMap { petID in
             let dosage = petDosages[petID] ?? 0
 
-            guard dosage > 0 else {
+            guard dosage.isFinite, dosage > 0 else {
                 return nil
             }
 
@@ -64,7 +64,9 @@ final class MedicineEventFormViewModel: ObservableObject {
                 data: .medicine(MedicineEventData(
                     name: selectedMedicine.name,
                     dosage: dosage,
-                    unit: selectedMedicine.unit
+                    unit: selectedMedicine.unit,
+                    savedOptionID: selectedSavedOptionID,
+                    doseInterval: selectedMedicine.doseInterval(for: petID)
                 ))
             )
         }

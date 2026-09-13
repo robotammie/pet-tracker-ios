@@ -3,6 +3,13 @@ import Foundation
 final class SavedOptionFormViewModel: ObservableObject {
     @Published var eventType: CareEventType
     @Published var name: String
+    @Published var officialFoodName = ""
+    @Published var medicinePurpose = ""
+    private var medicineCadence: MedicineCadence?
+    @Published var usesDoseTiming = false
+    @Published var minimumDoseHours = 0.0
+    @Published var maximumDoseHours = 0.0
+    @Published var petDoseIntervals: [PetMedicationDoseInterval] = []
     @Published var foodType: FoodType
     @Published var foodUnit: FoodUnit
     @Published var caloriesPerUnit: Int
@@ -29,11 +36,18 @@ final class SavedOptionFormViewModel: ObservableObject {
         switch option.data {
         case let .food(data):
             name = data.name
+            officialFoodName = data.officialName ?? ""
             foodType = data.foodType
             foodUnit = data.unit
             caloriesPerUnit = data.caloriesPerUnit
         case let .medicine(data):
             name = data.name
+            medicinePurpose = data.purpose ?? ""
+            medicineCadence = data.cadence
+            usesDoseTiming = data.doseInterval != nil
+            minimumDoseHours = data.doseInterval?.minimumHours ?? 0
+            maximumDoseHours = data.doseInterval?.maximumHours ?? 0
+            petDoseIntervals = data.petDoseIntervals
             dosage = data.dosage
             medicineUnit = data.unit
         }
@@ -53,10 +67,13 @@ final class SavedOptionFormViewModel: ObservableObject {
         switch eventType {
         case .food:
             return !trimmedName.isEmpty && caloriesPerUnit > 0
+                && FoodUnit.options(for: foodType).contains(foodUnit)
         case .medicine:
             return !trimmedName.isEmpty
-                && dosage > 0
+                && dosage.isFinite && dosage > 0
                 && !medicineUnit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && (!usesDoseTiming || configuredDoseInterval.isValid)
+                && petDoseIntervals.allSatisfy { $0.interval.isValid }
         case .litter:
             return false
         }
@@ -75,13 +92,18 @@ final class SavedOptionFormViewModel: ObservableObject {
                 name: name,
                 unit: foodUnit,
                 caloriesPerUnit: caloriesPerUnit,
-                foodType: foodType
+                foodType: foodType,
+                officialName: officialFoodName
             ))
         case .medicine:
             data = .medicine(SavedMedicineData(
                 name: name,
                 dosage: dosage,
-                unit: medicineUnit
+                unit: medicineUnit,
+                cadence: medicineCadence,
+                purpose: medicinePurpose,
+                doseInterval: usesDoseTiming ? configuredDoseInterval : nil,
+                petDoseIntervals: petDoseIntervals
             ))
         case .litter:
             return nil
@@ -97,7 +119,7 @@ final class SavedOptionFormViewModel: ObservableObject {
         )
     }
 
-    func makeAutoqueuedReminder(at date: Date = .now) -> Reminder? {
+    func makeAutoqueuedReminder(at date: Date = .now, savedOption: SavedEventOption? = nil) -> Reminder? {
         guard shouldAutoqueueReminder,
               eventType == .medicine,
               canSave(),
@@ -106,9 +128,13 @@ final class SavedOptionFormViewModel: ObservableObject {
             return nil
         }
 
-        let medicine = MedicineEventData(name: name, dosage: dosage, unit: medicineUnit)
+        let medicine = MedicineEventData(name: name, dosage: dosage, unit: medicineUnit,
+                                        savedOptionID: savedOption?.id,
+                                        doseInterval: usesDoseTiming ? configuredDoseInterval : nil)
         let targets = reminderPetIDs.map { petID in
-            ReminderTarget(petID: petID, eventData: .medicine(medicine))
+            var payload = medicine
+            payload.doseInterval = petDoseIntervals.first { $0.petID == petID }?.interval ?? medicine.doseInterval
+            return ReminderTarget(petID: petID, eventData: .medicine(payload))
         }
 
         return Reminder(
@@ -124,5 +150,23 @@ final class SavedOptionFormViewModel: ObservableObject {
             ),
             targets: targets
         )
+    }
+
+    var configuredDoseInterval: MedicationDoseInterval {
+        MedicationDoseInterval(minimumHours: minimumDoseHours, maximumHours: maximumDoseHours)
+    }
+
+    func setPetDoseIntervalEnabled(_ enabled: Bool, petID: UUID) {
+        petDoseIntervals.removeAll { $0.petID == petID }
+        if enabled {
+            petDoseIntervals.append(PetMedicationDoseInterval(petID: petID,
+                interval: MedicationDoseInterval(minimumHours: 0, maximumHours: 0)))
+        }
+    }
+
+    func setPetDoseHours(_ hours: Double, petID: UUID, minimum: Bool) {
+        guard let index = petDoseIntervals.firstIndex(where: { $0.petID == petID }) else { return }
+        if minimum { petDoseIntervals[index].interval.minimumHours = hours }
+        else { petDoseIntervals[index].interval.maximumHours = hours }
     }
 }

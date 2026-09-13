@@ -101,7 +101,8 @@ final class FoodEventFormViewModel: ObservableObject {
                         foodType: selectedFood.foodType,
                         amount: householdAmount,
                         unit: selectedFood.unit,
-                        calories: calories(for: householdAmount)
+                        calories: calories(for: householdAmount),
+                        caloriesPerUnit: selectedFood.caloriesPerUnit
                     ))
                 )
             ]

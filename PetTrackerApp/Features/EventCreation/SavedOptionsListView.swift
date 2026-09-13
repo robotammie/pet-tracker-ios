@@ -42,7 +42,7 @@ struct SavedOptionsListView: View {
         case .medicine:
             return "pills"
         case .litter:
-            return "sparkles"
+            return "tray"
         }
     }
 
@@ -52,6 +52,11 @@ struct SavedOptionsListView: View {
         case let .food(food):
             VStack(alignment: .leading, spacing: 4) {
                 Text(food.name)
+                if let officialName = food.officialName {
+                    Text(officialName)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
                 Text("\(food.foodType.rawValue), \(food.caloriesPerUnit) cal per \(food.unit.rawValue)")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -59,6 +64,19 @@ struct SavedOptionsListView: View {
         case let .medicine(medicine):
             VStack(alignment: .leading, spacing: 4) {
                 Text(medicine.name)
+                if let purpose = medicine.purpose {
+                    Text(purpose)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                if let interval = medicine.doseInterval {
+                    Text("Prescribed interval: \(interval.summary)")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                if !medicine.petDoseIntervals.isEmpty {
+                    Text("Pet-specific intervals configured")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
                 Text("\(medicine.dosage.formatted()) \(medicine.unit)")
                     .font(.footnote)
                     .foregroundStyle(.secondary)

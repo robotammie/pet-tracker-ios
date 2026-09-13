@@ -23,8 +23,10 @@ The XCTest bodies are currently fast, but iOS simulator test attachment can take
 
 Use these helpers:
 - `scripts/build-for-testing.sh` for day-to-day compile checks that do not need to run the simulator.
-- `scripts/test-without-building.sh` after a successful build when only rerunning tests.
-- `scripts/test.sh` for full milestone verification.
+- `scripts/test-without-building.sh` after a successful build when rerunning unit tests only.
+- `scripts/test.sh` to build and run unit tests only.
+- `scripts/test-ui.sh` to build and run the separate UI smoke suite.
+- Run both test suites for milestone verification.
 
 The test helpers preboot the named simulator, disable parallel simulator destinations, and use the shared local `DerivedData/` directory.
 
@@ -571,26 +573,108 @@ scripts/test-without-building.sh
 
 Result: 38 tests passed.
 
-## Stage 5.5: Local Polish Before CloudKit
+## Stage 5.5: Local Polish Before CloudKit - Complete
 Goal: make the local-only app comfortable enough for daily testing before adding sync complexity.
 
 Tasks:
-- Update README and plan when major flows change.
-- Add small UI smoke tests for core happy paths:
-    - app launches to Home
-    - quick-add food creates a visible event
-    - quick-add medicine creates a visible event
-    - reminder can be marked complete
-    - settings toggles persist
-- Add or refine accessibility identifiers as needed for those tests.
-- Review empty states and first-run state.
-- Review touch targets and Dynamic Type behavior.
-- Document the reset/reseed workflow clearly for simulator and real-device testing.
+- [x] Align README, plan, and handoff with actual app behavior and test workflows.
+- [x] Add small UI smoke tests for launch, food/medicine/litter logging, reminder completion, settings persistence, and debug reset confirmation.
+- [x] Add/refine identifiers on controls and reminder rows; remove container identifiers that override children.
+- [x] Review empty states and first-run sample seeding; add guidance when food/medicine options are missing.
+- [x] Review touch targets and Dynamic Type; expand destination and input touch areas and stack reminder/amount/dose content at accessibility sizes.
+- [x] Document simulator/device reset/reseed and incompatible-schema reinstall.
+- [x] Keep unit testing separate from UI automation.
 
 Acceptance checks:
-- Core local workflows are pleasant enough for repeated personal testing.
-- UI smoke tests cover the most important user paths without becoming slow or flaky.
-- Known schema-reset expectations are documented before CloudKit work starts.
+- [x] Core local happy paths persist correctly and pass smoke tests.
+- [x] UI smoke suite remains focused, without dependence on private seed data or prior development data.
+- [x] Schema-reset expectations and current feature limits are documented before CloudKit work.
+
+Stage 5.5 notes:
+- Debug UI automation uses a separate persistent SwiftData store (`UITests.store`) and UserDefaults suite (`PetTrackerApp.UITests`). Public seed fixtures begin with no event history. `-uiTestingReset` resets only the test data; relaunch checks omit it. A no-op notification scheduler avoids prompts and notification side effects.
+- `scripts/test.sh` and `scripts/test-without-building.sh` select only unit tests. `scripts/test-ui.sh` builds and runs only UI tests. `SIMULATOR_NAME` now drives the default destination too.
+- First launch still seeds sample data. Pet editing and a general reminder creation/editing screen remain unimplemented; medicine options can autoqueue reminders. These are recorded product gaps, not new Stage 5.5 scope.
+- Visual review on iPhone 17 / iOS 26.5 checked Home, settings, and the food form at the largest accessibility text size. Reminder titles and due times now stack without narrow-column wrapping. The original simulator text size was restored. This is a focused simulator review, not an exhaustive VoiceOver or real-device audit.
+- Verified on 2026-09-13:
+    - `scripts/build-for-testing.sh`: app and both test targets compile.
+    - `scripts/test-without-building.sh`: 38 unit tests passed; no UI tests launched.
+    - Final `scripts/test-ui.sh`: all 7 UI tests passed in about 140 seconds of test execution (149 seconds including test setup/cleanup).
+    - Script syntax checks and `git diff --check` passed.
+- Initial UI runs exposed container-ID propagation and dialog/menu behavior; those were fixed and the final full suite passed.
+
+Next stage: Stage 6, when requested. Stage 5.5 changes remain uncommitted for review.
+
+## Stage 5.6: Small Design Updates - Complete
+Goal: implement small requested changes before CloudKit.
+
+Implemented scope:
+- Complete now checkmark controls on Home Due and Reminders Active rows, using now for event/completion time and completing all remaining pet targets.
+- Events pet filter: All pets (including Household), Household, or one pet's own events.
+- Wet-food can units and fractional-can calorie calculation.
+- Optional official food name and medication purpose in saved options, domain models, and SwiftData mapping.
+- Preserve an existing medicine cadence when editing metadata.
+- Focused unit coverage for completion time/remaining targets, pure reminders, pet filtering, can validation/calories, metadata persistence, and unchanged event snapshots.
+- UI coverage for Home Complete now and pet filtering, retaining Stage 5.5 smoke paths.
+
+Verification on 2026-09-13:
+- `scripts/build-for-testing.sh`: build passed.
+- `scripts/test.sh`: 44 unit tests passed.
+- `scripts/test-ui.sh`: all 8 UI tests passed, including Complete now and Events pet filtering (about 167 seconds test execution).
+- `git diff --check`: passed.
+
+Changes remain uncommitted for review. The user subsequently authorized Stages 5.7–5.8 and requested design options only for 5.9.
+
+## Stage 5.7: Past-Event Editing - Complete
+Authorized 2026-09-13 and verified before starting 5.8.
+
+- Typed single-event editor launched from Events rows, preserving ID, createdAt, and original historical payloads.
+- Date/time, pet/Household scope, name, food type/amount/unit/calories, and medicine dose/unit edits.
+- Optional stored calorie-rate snapshot on newly logged food; explicit recalculation only when the original rate matches the selected unit. Older entries retain user-confirmed calories.
+- Validated subtype values; repository upsert refreshes grouping and daily calorie totals.
+- Event edits leave saved options and reminder completion history unchanged.
+
+Verification: 48 unit tests passed (`/tmp/pettracker-57-unit.log`); focused food-edit/relaunch/cancel UI test passed (`/tmp/pettracker-57-ui.log`).
+
+## Stage 5.8: Medication Timing - Complete
+Authorized 2026-09-13; same medication + cat only, as explicitly chosen by the user.
+
+Implemented scope:
+- Structured minimum/maximum prescribed hours, optional pet-specific overrides, stable medication IDs on events and reminder payloads.
+- Checks against proposed timestamps and nearest earlier/later doses, excluding IDs being edited and including all batch candidates.
+- One deferred write gate for manual logging, event edits, selected-target reminder completion, and Complete now. Cancel writes no events or reminder changes; Log anyway records warning text and acknowledgement time for affected events.
+- Scoped warning presentation on the initiating sheet or root surface, with dismissal only after a completed save.
+- Optional SwiftData fields and legacy payload decoding; unique normalized legacy names link only when exactly one saved medication (including deleted options) matches. Ambiguous matches require acknowledgement; unrelated/unknown names make no safety assertion.
+- Current configured prescription overrides an event's timing snapshot for checks; historical name/dose/unit remain unchanged. Without a current matching option, the stored linked interval is used.
+- No clinical defaults and no different-medication interactions. Interaction checks have been removed from scope at the user’s request.
+
+Final verification on 2026-09-13:
+- `scripts/build-for-testing.sh`: app and both test targets built successfully (`/tmp/pettracker-58-build-final.log`).
+- `scripts/test.sh`: 61 unit tests passed after the timing/editor changes; final `scripts/test-without-building.sh` confirmed all 61 against the final build (`/tmp/pettracker-58-unit-verified.log`).
+- `scripts/test-ui.sh`: all 13 UI tests passed in 366 seconds (`/tmp/pettracker-58-ui-verified.log`). Includes manual Cancel/Log anyway and persisted override, editor warning, Home Complete now, selected-target reminder completion, entered interval/relaunch persistence, and existing smoke paths.
+- `git diff --check` and shell script syntax checks passed.
+
+Initial UI failures identified sheet warning presentation and an ambiguous Settings selector. Both were fixed; the final full suite passed. Stages 5.7–5.8 remain uncommitted for review.
+
+## Stage 5.9: Health & Life - Complete
+Approved 2026-09-13: option A in pet detail; Health last in Quick Add; include health in Recent; smaller initial category set. Weight defaults to lb, with kg also available.
+
+- Separate HealthEntry/typed weight, repository, and SwiftData record.
+- Required-pet add/edit forms for weight, vet visits, procedures, and general notes.
+- Pet detail Care / Health picker; Health date grouping, category filtering, empty state, and add button.
+- Mixed chronological Recent with latest-per-pet/category health entries from the last seven days and links to pet Health.
+- Preserve original unit and edit identity; no impact on care calories or reminder history.
+- Save errors retain the editor; reset/reseed includes health records.
+- Unit/disk persistence coverage and Quick Add/Recent/pet isolation/edit/relaunch UI coverage.
+
+Verification on 2026-09-13:
+- App/test build passed (`/tmp/pettracker-59-build-final.log`).
+- All 68 unit tests passed (`/tmp/pettracker-59-unit-verified.log`), including seven Health tests for validation, edit identity, unit preservation, Recent grouping, care isolation, save failures, and all-category disk persistence.
+- Focused Health UI test passed (`/tmp/pettracker-59-ui-picker.log`): required pet, lb default, Quick Add, Recent links, edit/relaunch, category filtering, canceled edits, and pet isolation.
+- All 14 UI tests passed with zero failures in 472 seconds (`/tmp/pettracker-59-ui-final.log`; result `DerivedData/Logs/Test/Test-PetTrackerApp-2026.09.13_16-07-34--0700.xcresult`). Existing logging, reminders, medication warnings, edits, and Settings remain green.
+- Initial UI test failures were resolved by correcting numeric-text replacement and tapping the pet picker's visible selection value, waiting for its choice before selecting. The focused Health test and final full suite both passed afterward.
+- Simulator visual inspection confirmed Health last in Quick Add, the mixed Recent row, and the unchanged five-tab layout. `git diff --check` passed.
+
+Approved design is in `health-design-options.md`. Follow-up reminders, charts, attachments, and integrations are deferred. Medication interaction checks are removed from scope. The user requested committing Stages 5.5–5.9 after changing litter icons to `tray`; the icon-only update is included in that commit. CloudKit remains Stage 6, to be started when requested.
 
 ## Stage 6: iCloud/CloudKit Sync
 Goal: connect persistence to iCloud once local behavior is stable.
