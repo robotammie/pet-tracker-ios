@@ -100,7 +100,7 @@ enum ReminderActionService {
 
         var history = completed
         history = Reminder(
-            id: UUID(),
+            id: SyncIdentity.history(reminder),
             title: history.title,
             mode: history.mode,
             eventType: history.eventType,
@@ -152,8 +152,10 @@ enum ReminderActionService {
         }
 
         return CareEvent(
+            id: SyncIdentity.event(reminder, petID: petID),
             type: eventType,
             petID: petID,
+            createdAt: completionTime,
             startTime: completionTime,
             data: eventData
         )

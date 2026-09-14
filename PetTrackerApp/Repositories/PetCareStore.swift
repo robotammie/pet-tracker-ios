@@ -7,6 +7,8 @@ final class PetCareStore: ObservableObject {
     @Published var savedOptions: [SavedEventOption]
     @Published var reminders: [Reminder]
     @Published var settings: UserSettings
+    @Published var persistenceError: String?
+    @Published var syncStatus = "On this device"
     @Published var medicationTimingPrompt: MedicationTimingPrompt?
 
     private struct PendingMedicationWrite {
@@ -24,6 +26,11 @@ final class PetCareStore: ObservableObject {
     private var savedOptionRepository: SavedEventOptionRepository?
     private var reminderRepository: ReminderRepository?
     private let notificationScheduler: NotificationScheduling
+    private var persistenceTransaction: ((() throws -> Void) throws -> Void)?
+    var onReminderCompleted: ((Reminder, Set<UUID>, Date, [CareEvent]) -> Void)?
+    var requestSyncAction: (() -> Void)?
+    var allowsDevelopmentReset = true
+    var onPersistenceChanged: (() -> Void)?
     private var developmentResetAction: (() -> Void)?
 
     init(
@@ -49,8 +56,10 @@ final class PetCareStore: ObservableObject {
         eventRepository: CareEventRepository,
         savedOptionRepository: SavedEventOptionRepository,
         reminderRepository: ReminderRepository,
-        healthRepository: HealthEntryRepository? = nil
+        healthRepository: HealthEntryRepository? = nil,
+        performTransaction: ((() throws -> Void) throws -> Void)? = nil
     ) {
+        self.persistenceTransaction = performTransaction
         self.healthRepository = healthRepository
         self.petRepository = petRepository
         self.eventRepository = eventRepository
@@ -58,32 +67,51 @@ final class PetCareStore: ObservableObject {
         self.reminderRepository = reminderRepository
     }
 
-    func refreshFromPersistence() {
-        if let healthRepository { healthEntries = healthRepository.listHealthEntries() }
-        if let petRepository {
-            pets = petRepository.listPets()
-        }
-
-        if let eventRepository {
-            events = eventRepository.listEvents()
-        }
-
-        if let savedOptionRepository {
-            savedOptions = savedOptionRepository.listSavedOptions(includeDeleted: true)
-        }
-
-        if let reminderRepository {
-            reminders = reminderRepository.listReminders(includeMuted: true)
+    @discardableResult
+    func refreshFromPersistence() -> Bool {
+        do {
+            // Publish only after all fetches succeed; failure must not look like an empty store.
+            let loadedPets = try petRepository?.listPets() ?? pets
+            let loadedEvents = try eventRepository?.listEvents() ?? events
+            let loadedOptions = try savedOptionRepository?.listSavedOptions(includeDeleted: true) ?? savedOptions
+            let loadedReminders = try reminderRepository?.listReminders(includeMuted: true) ?? reminders
+            let loadedHealth = try healthRepository?.listHealthEntries() ?? healthEntries
+            pets = loadedPets
+            events = loadedEvents
+            savedOptions = loadedOptions
+            reminders = loadedReminders
+            healthEntries = loadedHealth
+            persistenceError = nil
+            return true
+        } catch {
+            LocalPersistence.report(error, operation: "Fetch")
+            persistenceError = "Couldn’t load your data. Please try again."
+            return false
         }
     }
 
-    func savePetAndRefresh(_ pet: Pet) {
-        if let petRepository {
-            petRepository.savePet(pet)
-            refreshFromPersistence()
-        } else {
-            savePet(pet)
+    @discardableResult
+    private func writePersistence(_ action: () throws -> Void) -> Bool {
+        do {
+            if let persistenceTransaction { try persistenceTransaction(action) }
+            else { try action() }
+            guard refreshFromPersistence() else { return false }
+            onPersistenceChanged?()
+            return true
+        } catch {
+            LocalPersistence.report(error, operation: "Save")
+            persistenceError = "Couldn’t save your changes. Please try again."
+            return false
         }
+    }
+
+    @discardableResult
+    func savePetAndRefresh(_ pet: Pet) -> Bool {
+        let saved = writePersistence {
+            if let petRepository { try petRepository.savePet(pet) }
+            else { savePet(pet) }
+        }
+        return saved
     }
 
     func healthEntries(for petID: UUID) -> [HealthEntry] {
@@ -94,12 +122,10 @@ final class PetCareStore: ObservableObject {
         guard entry.isValid, pets.contains(where: { $0.id == entry.petID }) else {
             throw HealthSaveError.invalidEntry
         }
-        if let healthRepository {
-            try healthRepository.saveHealthEntry(entry)
-            refreshFromPersistence()
-        } else {
-            upsert(entry, in: &healthEntries)
-        }
+        guard writePersistence({
+            if let healthRepository { try healthRepository.saveHealthEntry(entry) }
+            else { upsert(entry, in: &healthEntries) }
+        }) else { throw HealthSaveError.invalidEntry }
     }
 
     func petName(for petID: UUID?) -> String {
@@ -175,9 +201,7 @@ final class PetCareStore: ObservableObject {
     func saveCareEventsAndRefresh(_ candidates: [CareEvent], presentation: MedicationTimingPresentation = .main, onSaved: (() -> Void)? = nil) -> Bool {
         medicationCheckedWrite(candidates, presentation: presentation, onSaved: onSaved) { [weak self] accepted in
             guard let self else { return false }
-            self.persistEvents(accepted)
-            self.refreshFromPersistence()
-            return true
+            return self.writePersistence { try self.persistEvents(accepted) }
         }
     }
 
@@ -228,41 +252,45 @@ final class PetCareStore: ObservableObject {
         return false
     }
 
-    private func persistEvents(_ accepted: [CareEvent]) {
+    private func persistEvents(_ accepted: [CareEvent]) throws {
         if let eventRepository {
-            accepted.forEach(eventRepository.saveEvent)
+            try accepted.forEach(eventRepository.saveEvent)
         } else {
             accepted.forEach(saveEvent)
         }
     }
 
-    func deleteCareEventAndRefresh(id: UUID) {
-        if let eventRepository {
-            eventRepository.deleteEvent(id: id)
-            refreshFromPersistence()
-        } else {
-            deleteEvent(id: id)
+    @discardableResult
+    func deleteCareEventAndRefresh(id: UUID) -> Bool {
+        let saved = writePersistence {
+            if let eventRepository { try eventRepository.deleteEvent(id: id) }
+            else { deleteEvent(id: id) }
         }
+        return saved
     }
 
-    func saveSavedOptionAndRefresh(_ option: SavedEventOption) {
-        if let savedOptionRepository {
-            savedOptionRepository.saveSavedOption(option)
-            refreshFromPersistence()
-        } else {
-            saveSavedOption(option)
+    @discardableResult
+    func saveSavedOptionAndRefresh(_ option: SavedEventOption, autoqueuedReminder: Reminder? = nil) -> Bool {
+        let saved = writePersistence {
+            if let savedOptionRepository { try savedOptionRepository.saveSavedOption(option) }
+            else { saveSavedOption(option) }
+            if let reminder = autoqueuedReminder {
+                if let reminderRepository { try reminderRepository.saveReminder(reminder) }
+                else { saveReminder(reminder) }
+            }
         }
+        if saved && autoqueuedReminder != nil { syncLocalNotifications() }
+        return saved
     }
 
-    func saveReminderAndRefresh(_ reminder: Reminder) {
-        if let reminderRepository {
-            reminderRepository.saveReminder(reminder)
-            refreshFromPersistence()
-        } else {
-            saveReminder(reminder)
+    @discardableResult
+    func saveReminderAndRefresh(_ reminder: Reminder) -> Bool {
+        let saved = writePersistence {
+            if let reminderRepository { try reminderRepository.saveReminder(reminder) }
+            else { saveReminder(reminder) }
         }
-
-        syncLocalNotifications()
+        if saved { syncLocalNotifications() }
+        return saved
     }
 
     func completeReminderNowAndRefresh(id: UUID, now: Date = .now) {
@@ -287,25 +315,39 @@ final class PetCareStore: ObservableObject {
         onSaved: (() -> Void)? = nil
     ) -> Bool {
         guard let current = reminders.first(where: { $0.id == reminder.id && $0.isActive }) else { return false }
+        guard current == reminder else {
+            persistenceError = "This reminder changed. Close and reopen it before completing it."
+            return false
+        }
+        guard !reminders.contains(where: { $0.id == SyncIdentity.history(current) && $0.status == .completed }) else {
+            persistenceError = "This occurrence was already completed. Choose a different due time or use Quick Add."
+            return false
+        }
         let result = ReminderActionService.complete(
             current,
             completedPetIDs: completedPetIDs,
             completionTime: completionTime,
             createsEvent: createsEvent
         )
+        guard !result.events.contains(where: { candidate in events.contains { $0.id == candidate.id } }) else {
+            persistenceError = "This occurrence is already logged. Choose a different due time or use Quick Add."
+            return false
+        }
         return medicationCheckedWrite(result.events, presentation: presentation, onSaved: onSaved) { [weak self] accepted in
             guard let self, self.reminders.first(where: { $0.id == current.id }) == current else { return false }
-            self.persistEvents(accepted)
-            if let repository = self.reminderRepository {
-                repository.saveReminder(result.updatedReminder)
-                if let history = result.historyReminder { repository.saveReminder(history) }
-            } else {
-                self.saveReminder(result.updatedReminder)
-                if let history = result.historyReminder { self.saveReminder(history) }
+            let saved = self.writePersistence {
+                try self.persistEvents(accepted)
+                if let repository = self.reminderRepository {
+                    try repository.saveReminder(result.updatedReminder)
+                    if let history = result.historyReminder { try repository.saveReminder(history) }
+                } else {
+                    self.saveReminder(result.updatedReminder)
+                    if let history = result.historyReminder { self.saveReminder(history) }
+                }
+                self.onReminderCompleted?(current, completedPetIDs, completionTime, accepted)
             }
-            self.refreshFromPersistence()
-            self.syncLocalNotifications()
-            return true
+            if saved { self.syncLocalNotifications() }
+            return saved
         }
     }
 
@@ -321,35 +363,33 @@ final class PetCareStore: ObservableObject {
         ))
     }
 
-    func softDeleteSavedOptionAndRefresh(id: UUID, at date: Date = .now) {
-        if let savedOptionRepository {
-            savedOptionRepository.softDeleteSavedOption(id: id, at: date)
-            refreshFromPersistence()
-        } else {
-            softDeleteSavedOption(id: id, at: date)
+    @discardableResult
+    func softDeleteSavedOptionAndRefresh(id: UUID, at date: Date = .now) -> Bool {
+        let saved = writePersistence {
+            if let savedOptionRepository { try savedOptionRepository.softDeleteSavedOption(id: id, at: date) }
+            else { softDeleteSavedOption(id: id, at: date) }
         }
+        return saved
     }
 
-    func muteReminderAndRefresh(id: UUID) {
-        if let reminderRepository {
-            reminderRepository.muteReminder(id: id)
-            refreshFromPersistence()
-        } else {
-            muteReminder(id: id)
+    @discardableResult
+    func muteReminderAndRefresh(id: UUID) -> Bool {
+        let saved = writePersistence {
+            if let reminderRepository { try reminderRepository.muteReminder(id: id) }
+            else { muteReminder(id: id) }
         }
-
-        syncLocalNotifications()
+        if saved { syncLocalNotifications() }
+        return saved
     }
 
-    func deleteReminderAndRefresh(id: UUID) {
-        if let reminderRepository {
-            reminderRepository.deleteReminder(id: id)
-            refreshFromPersistence()
-        } else {
-            deleteReminder(id: id)
+    @discardableResult
+    func deleteReminderAndRefresh(id: UUID) -> Bool {
+        let saved = writePersistence {
+            if let reminderRepository { try reminderRepository.deleteReminder(id: id) }
+            else { deleteReminder(id: id) }
         }
-
-        syncLocalNotifications()
+        if saved { syncLocalNotifications() }
+        return saved
     }
 
     func syncLocalNotifications() {
@@ -366,6 +406,7 @@ final class PetCareStore: ObservableObject {
     }
 
     func resetDevelopmentData() {
+        guard allowsDevelopmentReset else { return }
         cancelMedicationTimingWrite()
         if let developmentResetAction {
             developmentResetAction()

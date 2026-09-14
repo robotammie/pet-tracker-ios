@@ -2,6 +2,73 @@ import XCTest
 @testable import PetTrackerApp
 
 final class RepositoryTests: XCTestCase {
+    func testInjectedUnitHostAndUITestArgumentsAlwaysUseIsolatedStorage() {
+        XCTAssertTrue(UITestConfiguration.enabled(arguments: ["-uiTesting"], isTestHost: false))
+        XCTAssertTrue(UITestConfiguration.enabled(arguments: [], isTestHost: true))
+        XCTAssertFalse(UITestConfiguration.enabled(arguments: [], isTestHost: false))
+        XCTAssertTrue(UITestConfiguration.isEnabled)
+        XCTAssertEqual(UITestConfiguration.storeURL.lastPathComponent, "UnitTestHost.store")
+        XCTAssertNil(SyncBuildConfiguration.containerIdentifier)
+    }
+
+    func testStaleCompletionSheetDoesNotCompleteNextOccurrence() {
+        let now = Date(timeIntervalSince1970: 1_000)
+        let original = Reminder(title: "Reminder", mode: .pureReminder, eventType: nil,
+            dueAt: now, dueStyle: .timestamp,
+            schedule: ReminderSchedule(recurrenceRule: .every(value: 1, unit: .day), endDate: nil))
+        let store = PetCareStore(reminders: [original], notificationScheduler: SilentNotificationScheduler())
+        store.completeReminderNowAndRefresh(id: original.id, now: now)
+        XCTAssertFalse(store.completeReminderAndRefresh(original, completedPetIDs: [], completionTime: now,
+            createsEvent: false))
+        XCTAssertEqual(store.reminders.filter { $0.status == .completed }.count, 1)
+        XCTAssertNotNil(store.persistenceError)
+    }
+
+    func testReschedulingToPreviouslyCompletedDueTimeDoesNotLogAgain() {
+        let now = Date(timeIntervalSince1970: 1_000)
+        let original = Reminder(title: "Reminder", mode: .pureReminder, eventType: nil,
+            dueAt: now, dueStyle: .timestamp,
+            schedule: ReminderSchedule(recurrenceRule: .every(value: 1, unit: .day), endDate: nil))
+        let store = PetCareStore(reminders: [original], notificationScheduler: SilentNotificationScheduler())
+        store.completeReminderNowAndRefresh(id: original.id, now: now)
+        var next = store.reminders.first { $0.isActive }!
+        next.dueAt = original.dueAt
+        store.saveReminderAndRefresh(next)
+        XCTAssertFalse(store.completeReminderAndRefresh(next, completedPetIDs: [], completionTime: now,
+            createsEvent: false))
+        XCTAssertEqual(store.reminders.filter { $0.status == .completed }.count, 1)
+        XCTAssertNotNil(store.persistenceError)
+    }
+
+    func testFailedFetchPreservesAllDisplayedDataAndShowsError() {
+        let pet = Pet(name: "Original")
+        let store = PetCareStore(pets: [pet], notificationScheduler: SilentNotificationScheduler())
+        store.configurePersistence(petRepository: FailingPetRepository(), eventRepository: PetCareStore(),
+            savedOptionRepository: PetCareStore(), reminderRepository: PetCareStore())
+        XCTAssertFalse(store.refreshFromPersistence())
+        XCTAssertEqual(store.pets, [pet])
+        XCTAssertNotNil(store.persistenceError)
+    }
+
+    func testFailedPetWriteDoesNotReportSuccessOrNotifySync() {
+        let store = PetCareStore(notificationScheduler: SilentNotificationScheduler())
+        store.configurePersistence(petRepository: FailingPetRepository(), eventRepository: PetCareStore(),
+            savedOptionRepository: PetCareStore(), reminderRepository: PetCareStore())
+        var notified = false
+        store.onPersistenceChanged = { notified = true }
+        XCTAssertFalse(store.savePetAndRefresh(Pet(name: "Unsaved")))
+        XCTAssertTrue(store.pets.isEmpty)
+        XCTAssertFalse(notified)
+        XCTAssertNotNil(store.persistenceError)
+    }
+
+    func testInitializationDoesNotReseedEmptyCloudOrPreviouslyInitializedStores() {
+        XCTAssertTrue(InitialDataPolicy.shouldSeed(hasLocalData: false, initialized: false, syncConfigured: false))
+        XCTAssertFalse(InitialDataPolicy.shouldSeed(hasLocalData: true, initialized: false, syncConfigured: false))
+        XCTAssertFalse(InitialDataPolicy.shouldSeed(hasLocalData: false, initialized: true, syncConfigured: false))
+        XCTAssertFalse(InitialDataPolicy.shouldSeed(hasLocalData: false, initialized: false, syncConfigured: true))
+    }
+
     func testCompleteNowLogsOnlyRemainingPetsAtCurrentTime() {
         let completedPet = UUID()
         let remainingPet = UUID()
@@ -140,4 +207,11 @@ private struct SilentNotificationScheduler: NotificationScheduling {
     func requestAuthorization() {}
     func sync(reminders: [Reminder], settings: UserSettings) {}
     func resetScheduledNotifications() {}
+}
+
+private struct FailingPetRepository: PetRepository {
+    struct Failure: Error {}
+    func listPets() throws -> [Pet] { throw Failure() }
+    func savePet(_ pet: Pet) throws { throw Failure() }
+    func deletePet(id: UUID) throws { throw Failure() }
 }

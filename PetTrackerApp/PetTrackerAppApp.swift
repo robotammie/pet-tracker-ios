@@ -1,63 +1,83 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 @main
 struct PetTrackerAppApp: App {
-    private let modelContainer: ModelContainer = {
-        let schema = Schema([
-            PetRecord.self,
-            HealthEntryRecord.self,
-            CareEventRecord.self,
-            SavedEventOptionRecord.self,
-            ReminderRecord.self,
-            ReminderTargetRecord.self
-        ])
-        let configuration: ModelConfiguration
-#if DEBUG
-        if UITestConfiguration.isEnabled {
-            configuration = ModelConfiguration(
-                schema: schema,
-                url: UITestConfiguration.storeURL,
-                cloudKitDatabase: .none
-            )
-        } else {
-            configuration = ModelConfiguration(schema: schema)
-        }
-#else
-        configuration = ModelConfiguration(schema: schema)
-#endif
-
-        do {
-            return try ModelContainer(for: schema, configurations: [configuration])
-        } catch {
-            fatalError("Unable to create SwiftData model container: \(error)")
-        }
-    }()
-
     var body: some Scene {
-        WindowGroup {
-            PersistentRootView()
+        WindowGroup { PersistenceStartupView() }
+    }
+}
+
+struct PersistenceStartupView: View {
+    @State private var container: ModelContainer?
+    @State private var failed = false
+    @State private var injectedStartupFailure = false
+
+    var body: some View {
+        Group {
+            if let container {
+                PersistentRootView().modelContainer(container)
+            } else if failed {
+                ContentUnavailableView {
+                    Label("Couldn’t open your data", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text("Your existing data has not been reset. Try opening it again.")
+                } actions: {
+                    Button("Try Again", action: openStore)
+                        .accessibilityIdentifier("persistence.retry")
+                }
+            } else {
+                ProgressView("Opening your data…")
+            }
         }
-        .modelContainer(modelContainer)
+        .task { if container == nil && !failed { openStore() } }
+    }
+
+    private func openStore() {
+        #if DEBUG
+            if UITestConfiguration.isEnabled,
+                ProcessInfo.processInfo.arguments.contains("-uiTestingStartupFailure"),
+                !injectedStartupFailure
+            {
+                injectedStartupFailure = true
+                failed = true
+                return
+            }
+        #endif
+        do {
+            container = try LocalPersistence.makeContainer(
+                url: UITestConfiguration.isEnabled ? UITestConfiguration.storeURL : nil)
+            failed = false
+        } catch {
+            LocalPersistence.report(error, operation: "Open store")
+            failed = true
+        }
     }
 }
 
 // UI automation uses its own persistent store and defaults, never personal seed data.
 enum UITestConfiguration {
+    static func enabled(arguments: [String], isTestHost: Bool) -> Bool {
+        arguments.contains("-uiTesting") || isTestHost
+    }
+
     static var isEnabled: Bool {
-#if DEBUG
-        ProcessInfo.processInfo.arguments.contains("-uiTesting")
-#else
-        false
-#endif
+        enabled(
+            arguments: ProcessInfo.processInfo.arguments,
+            isTestHost: NSClassFromString("XCTestCase") != nil
+                || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil)
     }
 
     static var resetsData: Bool {
         isEnabled && ProcessInfo.processInfo.arguments.contains("-uiTestingReset")
     }
 
-    static let defaultsSuite = "PetTrackerApp.UITests"
+    private static var usesUIArguments: Bool { ProcessInfo.processInfo.arguments.contains("-uiTesting") }
+    static var defaultsSuite: String {
+        usesUIArguments ? "PetTrackerApp.UITests" : "PetTrackerApp.UnitTestHost"
+    }
     static var storeURL: URL {
-        URL.applicationSupportDirectory.appendingPathComponent("UITests.store")
+        URL.applicationSupportDirectory.appendingPathComponent(
+            usesUIArguments ? "UITests.store" : "UnitTestHost.store")
     }
 }

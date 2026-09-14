@@ -2,6 +2,7 @@ import Foundation
 
 extension PetCareStore {
     static var preview: PetCareStore {
+        if UITestConfiguration.isEnabled { return SeedData.store ?? PetCareStore() }
         if let localSeed = LocalSeedData.store {
             return localSeed
         }

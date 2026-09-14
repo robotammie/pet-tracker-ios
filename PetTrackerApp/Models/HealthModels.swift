@@ -22,13 +22,13 @@ enum WeightUnit: String, CaseIterable, Identifiable, Codable {
     var id: String { rawValue }
 }
 
-struct WeightMeasurement: Hashable {
+struct WeightMeasurement: Hashable, Codable {
     var value: Double
     var unit: WeightUnit
     var isValid: Bool { value.isFinite && value > 0 }
 }
 
-enum HealthEntryData: Hashable {
+enum HealthEntryData: Hashable, Codable {
     case weight(WeightMeasurement)
     case vetVisit
     case procedure
@@ -44,7 +44,7 @@ enum HealthEntryData: Hashable {
     }
 }
 
-struct HealthEntry: Identifiable, Hashable {
+struct HealthEntry: Identifiable, Hashable, Codable {
     let id: UUID
     var petID: UUID
     var happenedAt: Date

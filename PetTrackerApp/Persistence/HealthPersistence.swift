@@ -67,10 +67,17 @@ final class HealthEntryRecord {
 
 final class SwiftDataHealthEntryRepository: HealthEntryRepository {
     private let context: ModelContext
-    init(context: ModelContext) { self.context = context }
+    private let savesImmediately: Bool
+    init(context: ModelContext, savesImmediately: Bool = true) {
+        self.context = context
+        self.savesImmediately = savesImmediately
+    }
 
-    func listHealthEntries() -> [HealthEntry] {
-        ((try? context.fetch(FetchDescriptor<HealthEntryRecord>())) ?? []).compactMap(\.entry)
+    func listHealthEntries() throws -> [HealthEntry] {
+        try context.fetch(FetchDescriptor<HealthEntryRecord>()).map { record in
+            guard let entry = record.entry else { throw SyncError.invalidRecord }
+            return entry
+        }
     }
 
     func saveHealthEntry(_ entry: HealthEntry) throws {
@@ -80,6 +87,7 @@ final class SwiftDataHealthEntryRepository: HealthEntryRepository {
         } else {
             context.insert(HealthEntryRecord(entry: entry))
         }
+        guard savesImmediately else { return }
         do { try context.save() }
         catch { context.rollback(); throw error }
     }

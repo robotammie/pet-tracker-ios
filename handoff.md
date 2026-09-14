@@ -5,15 +5,15 @@ Use this file to resume the project in a fresh Codex chat/session.
 ## Resume Prompt
 
 ```text
-We are continuing an iOS SwiftUI app in this repo. Please read README.md, design.md, plan.md, and handoff.md, then inspect git status before making changes. Stages 5.5–5.9 are committed; preserve the completed work. Stages 5.7–5.8 were authorized with testing between stages; both are complete and verified. Read plan.md for results. Stage 5.9 is complete and verified (option A, four categories, Health Quick Add/Recent, lb default); final build, 68 unit tests, and all 14 UI tests passed; read plan.md for results. Stage 5.10 is complete and committed: final build, 83 unit tests, and all 21 UI tests passed. Read its implementation notes in plan.md; do not start Stage 6 until requested.
+We are continuing an iOS SwiftUI app in this repo. Please read README.md, design.md, plan.md, and handoff.md, then inspect git status before making changes. Stages 5.5–5.9 are committed; preserve the completed work. Stages 5.7–5.8 were authorized with testing between stages; both are complete and verified. Read plan.md for results. Stage 5.9 is complete and verified (option A, four categories, Health Quick Add/Recent, lb default); final build, 68 unit tests, and all 14 UI tests passed; read plan.md for results. Stage 5.10 is complete and committed: final build, 83 unit tests, and all 21 UI tests passed. Stage 6 has now been requested and code preparation implemented; read sync-design.md and plan.md before continuing. Normal builds remain local-only. Developer-account provisioning and live two-context CloudKit verification are pending. Stage 6 code preparation is committed as requested; inspect git status before continuing.
 ```
 
 ## Project Snapshot
 
 - App: native iOS SwiftUI pet care tracker.
-- Current milestone: Stages 0 through 5.10 are complete and verified. Changes are committed as requested.
+- Current milestone: Stages 0 through 5.10 are complete and committed. Stage 6 code preparation is complete and locally verified (111 unit tests, 22 UI tests); live CloudKit verification is pending.
 - Persistence: SwiftData for app data, UserDefaults for device-local notification settings.
-- Sync: CloudKit is planned for Stage 6, after local polish.
+- Sync: explicit CloudKit implementation is opt-in and disabled in normal builds. See sync-design.md. Provisioning and live checks await the developer account.
 - Scope: cats/pets, food events, medicine events, litter events, health history, reminders, saved food/medicine options, local notifications, focused settings.
 - Out of v1 scope: photos, Android, custom event types, widgets, household sharing, and unit conversion.
 
@@ -129,7 +129,7 @@ The user authorized 5.7 past-event editing and 5.8 same-medication/same-cat dose
 
 ## Next Suggested Move
 
-Stage 5.9 is complete and committed. Stage 5.10 is complete and committed: final build, 83 unit tests, and all 21 UI tests passed. Stage 6 can begin when requested. The user approved Health inside pet detail, weight/visits/procedures/general notes, Health last in Quick Add and included in Recent, and lb as the default weight unit. Do not enable CloudKit until the agreed pre-sync changes are settled. Changes are committed as requested.
+Stage 5.9 is complete and committed. Stage 5.10 is complete and committed: final build, 83 unit tests, and all 21 UI tests passed. Stage 6 was subsequently requested and its code preparation is implemented; see its current status and sync-design.md. The user approved Health inside pet detail, weight/visits/procedures/general notes, Health last in Quick Add and included in Recent, and lb as the default weight unit. Do not enable CloudKit until the agreed pre-sync changes are settled. Changes are committed as requested.
 
 Sync preparation update (2026-09-13): the user has no Apple developer account yet and will arrange it separately. Focus Stage 6 on correct code, data-preserving migration, offline behavior, and local tests; keep entitlement/container provisioning and live two-context verification explicitly pending until access is available. Future multi-user/household sharing remains a goal: assess the SwiftData-first choice against a future sharing path and isolate account/database ownership behind repository/sync boundaries. Do not implement sharing UI or permissions in Stage 6. See plan.md for execution constraints.
 
@@ -173,3 +173,12 @@ The user reviewed the original-design gaps one by one and approved minimal pet a
 - ReminderEditDraft/ReminderEditorView support interval and editable times-per-day schedules, end dates, pure/event-linked modes, and household/per-pet payloads. Partially completed occurrences retain completed targets and lock scope/mode/type; only active definitions can be edited. Stale drafts ask to reopen rather than overwriting changed state. Clearing an option restores recorded details while editing or requires choosing a payload for a new reminder.
 - Events + reuses EventCreationSheet; confirmed deletion refreshes the store without changing reminder history. Inline saved-option creation uses its own cancelable sheet and selects the saved result. New medication selection applies its default dose/unit; new food preserves entered amounts and uses the selected unit/rate. Full-row Add new touch targets prevent missed taps.
 - Private seed data and the separate personal simulator remain outside UI-test workflows. CloudKit remains unstarted.
+
+
+## Stage 6 code preparation (2026-09-13)
+
+The user authorized Stage 6 while arranging an Apple developer account separately. The explicit CloudKit fallback is implemented behind repositories, preserving the unchanged local SwiftData schema. Read [sync-design.md](sync-design.md) before modifying sync; it defines scoped ownership, the version-1 wire contract, prepared-write recovery, tombstones, completion reconciliation, scheduling calendar, and future zone-wide household sharing.
+
+Both the normal app/test build and optional unsigned CloudKit template build passed. Final normal unit suite passed **111 tests**; full local UI suite passed **22 tests**. The latest normal app was installed and launched on iPhone 17 successfully, and the test runner is absent. Logs and result bundles are in plan.md. Tests use public fixtures and isolated stores; preserve the ignored private SeedData.local.swift without reading, changing, or staging it.
+
+Normal builds remain local-only. The configuration templates are not attached to project build configurations. Pending: actual signing team/container/environment configuration, schema provisioning, signed entitlement verification, and live two-context behavior on a backed-up populated dataset and empty second context. Do not mark the overall Stage 6 milestone complete or advance to release assumptions until these checks pass. Future sharing invitations/permissions/UI and background push are outside this milestone. Stage 6 code preparation and documentation are included in the requested commit.

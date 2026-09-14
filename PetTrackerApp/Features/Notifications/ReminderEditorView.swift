@@ -56,6 +56,7 @@ struct ReminderEditorView: View {
                     Text("End date must be on or after the first due time.").foregroundStyle(.secondary)
                 }
             }
+            .persistenceErrorBanner()
             .navigationTitle(draft.original == nil ? "Add Reminder" : "Edit Reminder")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -67,8 +68,7 @@ struct ReminderEditorView: View {
                         if let original = draft.original, store.reminders.first(where: { $0.id == original.id }) != original {
                             saveError = true
                         } else {
-                            store.saveReminderAndRefresh(reminder)
-                            dismiss()
+                            if store.saveReminderAndRefresh(reminder) { dismiss() }
                         }
                     }
                     .disabled(draft.makeReminder(pets: store.pets) == nil)

@@ -49,6 +49,7 @@ struct PetEditorView: View {
                     Text("Leave blank for no daily goal.").font(.footnote).foregroundStyle(.secondary)
                 }
             }
+            .persistenceErrorBanner()
             .navigationTitle(isEditing ? "Edit Pet" : "Add Pet")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -57,8 +58,7 @@ struct PetEditorView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         guard let pet = draft.makePet() else { return }
-                        store.savePetAndRefresh(pet)
-                        dismiss()
+                        if store.savePetAndRefresh(pet) { dismiss() }
                     }
                     .disabled(draft.makePet() == nil).accessibilityIdentifier("petEditor.save")
                 }

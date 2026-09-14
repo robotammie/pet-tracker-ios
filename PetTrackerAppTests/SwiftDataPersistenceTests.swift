@@ -8,9 +8,9 @@ final class SwiftDataPersistenceTests: XCTestCase {
         let repository = SwiftDataPetRepository(context: context)
         let pet = Pet(name: "Luna", caloriesPerDay: 220)
 
-        repository.savePet(pet)
+        try repository.savePet(pet)
 
-        XCTAssertEqual(repository.listPets(), [pet])
+        XCTAssertEqual(try repository.listPets(), [pet])
     }
 
     func testEventRepositoryHardDeletesEvent() throws {
@@ -28,10 +28,10 @@ final class SwiftDataPersistenceTests: XCTestCase {
             ))
         )
 
-        repository.saveEvent(event)
-        repository.deleteEvent(id: event.id)
+        try repository.saveEvent(event)
+        try repository.deleteEvent(id: event.id)
 
-        XCTAssertTrue(repository.listEvents().isEmpty)
+        XCTAssertTrue(try repository.listEvents().isEmpty)
     }
 
     func testSavedOptionRepositorySoftDeletesOption() throws {
@@ -47,11 +47,11 @@ final class SwiftDataPersistenceTests: XCTestCase {
             ))
         )
 
-        repository.saveSavedOption(option)
-        repository.softDeleteSavedOption(id: option.id, at: Date())
+        try repository.saveSavedOption(option)
+        try repository.softDeleteSavedOption(id: option.id, at: Date())
 
-        XCTAssertTrue(repository.listSavedOptions().isEmpty)
-        XCTAssertEqual(repository.listSavedOptions(includeDeleted: true).count, 1)
+        XCTAssertTrue(try repository.listSavedOptions().isEmpty)
+        XCTAssertEqual(try repository.listSavedOptions(includeDeleted: true).count, 1)
     }
 
     func testReminderRepositoryMutesAndHardDeletesReminder() throws {
@@ -65,15 +65,15 @@ final class SwiftDataPersistenceTests: XCTestCase {
             dueStyle: .dayOnly
         )
 
-        repository.saveReminder(reminder)
-        repository.muteReminder(id: reminder.id)
+        try repository.saveReminder(reminder)
+        try repository.muteReminder(id: reminder.id)
 
-        XCTAssertTrue(repository.listReminders().isEmpty)
-        XCTAssertEqual(repository.listReminders(includeMuted: true).first?.status, .muted)
+        XCTAssertTrue(try repository.listReminders().isEmpty)
+        XCTAssertEqual(try repository.listReminders(includeMuted: true).first?.status, .muted)
 
-        repository.deleteReminder(id: reminder.id)
+        try repository.deleteReminder(id: reminder.id)
 
-        XCTAssertTrue(repository.listReminders(includeMuted: true).isEmpty)
+        XCTAssertTrue(try repository.listReminders(includeMuted: true).isEmpty)
     }
 
     func testReminderRepositoryPersistsEventData() throws {
@@ -96,9 +96,9 @@ final class SwiftDataPersistenceTests: XCTestCase {
             dueStyle: .timestamp
         )
 
-        repository.saveReminder(reminder)
+        try repository.saveReminder(reminder)
 
-        let saved = repository.listReminders().first
+        let saved = try repository.listReminders().first
         XCTAssertEqual(saved?.eventPetID, petID)
         XCTAssertEqual(saved?.eventData, reminder.eventData)
     }
@@ -146,9 +146,9 @@ final class SwiftDataPersistenceTests: XCTestCase {
             ]
         )
 
-        repository.saveReminder(reminder)
+        try repository.saveReminder(reminder)
 
-        let saved = try XCTUnwrap(repository.listReminders().first)
+        let saved = try XCTUnwrap(try repository.listReminders().first)
         XCTAssertEqual(saved.targets.count, 2)
 
         let targetsByPetID = Dictionary(uniqueKeysWithValues: saved.targets.map { ($0.petID, $0) })
@@ -171,9 +171,9 @@ final class SwiftDataPersistenceTests: XCTestCase {
             ignoredUntil: ignoredUntil
         )
 
-        repository.saveReminder(reminder)
+        try repository.saveReminder(reminder)
 
-        XCTAssertEqual(repository.listReminders().first?.ignoredUntil, ignoredUntil)
+        XCTAssertEqual(try repository.listReminders().first?.ignoredUntil, ignoredUntil)
     }
 
     func testOptionMetadataAndCanUnitRoundTripWithoutChangingEventSnapshots() throws {
@@ -185,17 +185,85 @@ final class SwiftDataPersistenceTests: XCTestCase {
             officialName: "Hill's Gastrointestinal Biome for Adult Cats")))
         let medicine = SavedEventOption(eventType: .medicine, data: .medicine(SavedMedicineData(
             name: "Pill", dosage: 1, unit: "tablet", purpose: "Antibiotic")))
-        options.saveSavedOption(food)
-        options.saveSavedOption(medicine)
-        XCTAssertEqual(Set(options.listSavedOptions(includeDeleted: false)), Set([food, medicine]))
+        try options.saveSavedOption(food)
+        try options.saveSavedOption(medicine)
+        XCTAssertEqual(Set(try options.listSavedOptions(includeDeleted: false)), Set([food, medicine]))
         let event = CareEvent(type: .food, petID: nil, data: .food(FoodEventData(
             name: "Hill's", foodType: .wet, amount: 0.5, unit: .can, calories: 45)))
-        events.saveEvent(event)
+        try events.saveEvent(event)
         var edited = food
         edited.data = .food(SavedFoodData(name: "New display name", unit: .can,
                                          caloriesPerUnit: 100, foodType: .wet, officialName: "New official name"))
-        options.saveSavedOption(edited)
-        XCTAssertEqual(events.listEvents(), [event])
+        try options.saveSavedOption(edited)
+        XCTAssertEqual(try events.listEvents(), [event])
+    }
+
+    func testPopulatedStageFiveStoreCopyOpensWithoutResettingHistory() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let original = root.appendingPathComponent("original")
+        let copy = root.appendingPathComponent("copy")
+        try FileManager.default.createDirectory(at: original, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let pet = Pet(name: "Upgrade cat", caloriesPerDay: 240)
+        let event = CareEvent(type: .food, petID: pet.id,
+            data: .food(FoodEventData(name: "Food", foodType: .wet, amount: 1, unit: .can, calories: 90)))
+        let option = SavedEventOption(eventType: .medicine,
+            data: .medicine(SavedMedicineData(name: "Medication", dosage: 1, unit: "tablet",
+                doseInterval: MedicationDoseInterval(minimumHours: 8, maximumHours: 12))))
+        let reminder = Reminder(title: "Recorded completion", mode: .reminderToEvent, eventType: .food,
+            dueAt: event.startTime, dueStyle: .timestamp, status: .completed,
+            targets: [ReminderTarget(petID: pet.id, eventData: event.data, completedAt: event.startTime)],
+            completedAt: event.startTime)
+        let health = HealthEntry(petID: pet.id, title: "Weight", notes: "Keep this history",
+            data: .weight(WeightMeasurement(value: 9.5, unit: .pound)))
+        do {
+            // Stage 5 used this unversioned schema and automatic container discovery.
+            let legacySchema = Schema([PetRecord.self, HealthEntryRecord.self, CareEventRecord.self,
+                SavedEventOptionRecord.self, ReminderRecord.self, ReminderTargetRecord.self])
+            let container = try ModelContainer(for: legacySchema, configurations: [
+                ModelConfiguration(schema: legacySchema, url: original.appendingPathComponent("default.store"))])
+            let context = ModelContext(container)
+            try SwiftDataPetRepository(context: context).savePet(pet)
+            try SwiftDataCareEventRepository(context: context).saveEvent(event)
+            try SwiftDataSavedEventOptionRepository(context: context).saveSavedOption(option)
+            try SwiftDataReminderRepository(context: context).saveReminder(reminder)
+            try SwiftDataHealthEntryRepository(context: context).saveHealthEntry(health)
+        }
+        // Exercise a copy, never a user's simulator store; include SQLite sidecars.
+        try FileManager.default.copyItem(at: original, to: copy)
+        let container = try LocalPersistence.makeContainer(url: copy.appendingPathComponent("default.store"))
+        let context = ModelContext(container)
+        XCTAssertEqual(try SwiftDataPetRepository(context: context).listPets(), [pet])
+        XCTAssertEqual(try SwiftDataCareEventRepository(context: context).listEvents(), [event])
+        XCTAssertEqual(try SwiftDataSavedEventOptionRepository(context: context).listSavedOptions(includeDeleted: true), [option])
+        XCTAssertEqual(try SwiftDataReminderRepository(context: context).listReminders(includeMuted: true), [reminder])
+        XCTAssertEqual(try SwiftDataHealthEntryRepository(context: context).listHealthEntries(), [health])
+    }
+
+    func testUnreadableStoredRecordThrowsAndStillCountsAsExistingData() throws {
+        let context = ModelContext(try LocalPersistence.makeContainer(inMemory: true))
+        context.insert(CareEventRecord(typeRawValue: "Unknown future type", petID: nil, createdAt: .now, startTime: .now))
+        try context.save()
+        XCTAssertTrue(try LocalPersistence.hasRecords(context: context))
+        XCTAssertThrowsError(try SwiftDataCareEventRepository(context: context).listEvents())
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<CareEventRecord>()), 1)
+    }
+
+    func testMultiRecordTransactionRollsBackAllChangesOnFailure() throws {
+        struct Failure: Error {}
+        let container = try LocalPersistence.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        context.autosaveEnabled = false
+        let pets = SwiftDataPetRepository(context: context, savesImmediately: false)
+        let events = SwiftDataCareEventRepository(context: context, savesImmediately: false)
+        XCTAssertThrowsError(try LocalPersistence.transaction(context: context) {
+            try pets.savePet(Pet(name: "Unsaved"))
+            try events.saveEvent(CareEvent(type: .litter, petID: nil, data: .litter(LitterEventData())))
+            throw Failure()
+        })
+        XCTAssertTrue(try pets.listPets().isEmpty)
+        XCTAssertTrue(try events.listEvents().isEmpty)
+        XCTAssertTrue(try SwiftDataPetRepository(context: ModelContext(container)).listPets().isEmpty)
     }
 
     private func makeContext() throws -> ModelContext {

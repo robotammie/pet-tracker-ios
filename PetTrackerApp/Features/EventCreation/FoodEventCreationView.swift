@@ -68,8 +68,7 @@ struct FoodEventCreationView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
-                    store.saveCareEventsAndRefresh(viewModel.makeEvents())
-                    dismiss()
+                    if store.saveCareEventsAndRefresh(viewModel.makeEvents()) { dismiss() }
                 }
                 .disabled(!viewModel.canSave())
                 .accessibilityIdentifier("foodCreation.save")

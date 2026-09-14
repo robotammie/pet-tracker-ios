@@ -66,12 +66,12 @@ final class CareEventEditDraftTests: XCTestCase {
         let options = SwiftDataSavedEventOptionRepository(context: context)
         let reminders = SwiftDataReminderRepository(context: context)
         let pet = Pet(name: "Cat")
-        pets.savePet(pet)
+        try pets.savePet(pet)
         let oldDay = Calendar.current.startOfDay(for: .now)
         let newDay = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -1, to: oldDay))
         let event = CareEvent(type: .food, petID: pet.id, startTime: oldDay,
             data: .food(FoodEventData(name: "Food", foodType: .wet, amount: 1, unit: .can, calories: 90, caloriesPerUnit: 90)))
-        events.saveEvent(event)
+        try events.saveEvent(event)
         let store = PetCareStore()
         store.configurePersistence(petRepository: pets, eventRepository: events, savedOptionRepository: options, reminderRepository: reminders)
         store.refreshFromPersistence()
@@ -83,8 +83,8 @@ final class CareEventEditDraftTests: XCTestCase {
         XCTAssertEqual(store.events.count, 1)
         XCTAssertEqual(store.calories(for: pet, on: oldDay), 0)
         XCTAssertEqual(store.calories(for: pet, on: newDay), 45)
-        XCTAssertEqual(events.listEvents().first?.createdAt, event.createdAt)
-        guard case let .food(saved) = events.listEvents().first?.data else { return XCTFail("Expected food") }
+        XCTAssertEqual(try events.listEvents().first?.createdAt, event.createdAt)
+        guard case let .food(saved) = try events.listEvents().first?.data else { return XCTFail("Expected food") }
         XCTAssertEqual(saved.caloriesPerUnit, 90)
     }
 }

@@ -67,6 +67,7 @@ struct CareEventEditorView: View {
                 }
             }
             .medicationTimingAlert(.eventEditor)
+            .persistenceErrorBanner()
             .navigationTitle("Edit \(draft.original.type.rawValue)")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

@@ -191,19 +191,19 @@ final class MedicationTimingServiceTests: XCTestCase {
         let events = SwiftDataCareEventRepository(context: context)
         let reminders = SwiftDataReminderRepository(context: context)
         let medicine = option(petIntervals: [PetMedicationDoseInterval(petID: pet.id, interval: interval)])
-        medicines.saveSavedOption(medicine)
-        XCTAssertEqual(medicines.listSavedOptions(includeDeleted: true), [medicine])
+        try medicines.saveSavedOption(medicine)
+        XCTAssertEqual(try medicines.listSavedOptions(includeDeleted: true), [medicine])
         var event = MedicationTimingService.resolved(dose(medicine), options: [medicine])
         event.doseTimingOverrideAt = time
         event.doseTimingOverrideMessage = "Acknowledged"
-        events.saveEvent(event)
-        XCTAssertEqual(events.listEvents(), [event])
+        try events.saveEvent(event)
+        XCTAssertEqual(try events.listEvents(), [event])
         let reminder = Reminder(title: "Dose", mode: .reminderToEvent, eventType: .medicine, eventPetID: pet.id, eventData: event.data, dueAt: time, dueStyle: .timestamp, targets: [ReminderTarget(petID: pet.id, eventData: event.data)])
-        reminders.saveReminder(reminder)
-        XCTAssertEqual(reminders.listReminders(includeMuted: true), [reminder])
+        try reminders.saveReminder(reminder)
+        XCTAssertEqual(try reminders.listReminders(includeMuted: true), [reminder])
         let newContext = ModelContext(container)
-        XCTAssertEqual(SwiftDataCareEventRepository(context: newContext).listEvents(), [event])
-        XCTAssertEqual(SwiftDataReminderRepository(context: newContext).listReminders(includeMuted: true), [reminder])
+        XCTAssertEqual(try SwiftDataCareEventRepository(context: newContext).listEvents(), [event])
+        XCTAssertEqual(try SwiftDataReminderRepository(context: newContext).listReminders(includeMuted: true), [reminder])
     }
 }
 

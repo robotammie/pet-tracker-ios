@@ -10,7 +10,7 @@ Known choices:
 - Prefer SwiftUI.
 - Design the data layer so CloudKit/iCloud sync can be supported without rewriting the UI.
 - Add CloudKit after Stage 5 and a local-only polish pass.
-- Try SwiftData CloudKit first while keeping repository boundaries strict enough to switch to explicit sync later if needed.
+- Stage 6 reviewed managed SwiftData sync and selected the explicit CloudKit fallback, preserving the existing local schema and a future shared-database path. See sync-design.md.
 - Treat food, litter, medicine, notifications, saved autofill options, pets, and settings as separate model concerns.
 - Keep v1 settings focused on notification preferences and the global day-only notification time.
 - Use hybrid notification settings: global controls first, with restrained per-event-type overrides.
@@ -705,11 +705,14 @@ Verification on 2026-09-13:
 - Final app/test build passed (`/tmp/pettracker-510-build-final.log`). All 83 unit tests passed (`/tmp/pettracker-510-unit-final.log`; result `DerivedData/Logs/Test/Test-PetTrackerApp-2026.09.13_17-01-45--0700.xcresult`).
 - All 21 UI tests passed with zero failures in 728 seconds (`/tmp/pettracker-510-ui-final.log`; result `DerivedData/Logs/Test/Test-PetTrackerApp-2026.09.13_17-02-07--0700.xcresult`).
 - Initial test issues were corrected using captured UI evidence: menu visibility/scrolling, nested alert actions, stepper increment identifier, zero replacement, and Home versus Events food-row text. Inline Add new labels now have explicit full-row touch targets after intermittent row taps failed to dispatch.
-- Simulator screenshots confirmed inline editor layout and preserved food selection/amount after Cancel. `git diff --check` passed. Implementation and documentation are included in the requested Stage 5.10 commit. Pet deletion, broader saved-option save/update controls, and other approved future features remain deferred; Stage 6 has not started.
+- Simulator screenshots confirmed inline editor layout and preserved food selection/amount after Cancel. `git diff --check` passed. Implementation and documentation are included in the requested Stage 5.10 commit. Pet deletion, broader saved-option save/update controls, and other approved future features remain deferred. Stage 6 was subsequently authorized; see its status below.
 
 
 
 ## Stage 6: iCloud/CloudKit Sync
+
+Status: code preparation complete and locally verified. Account-dependent provisioning and live verification remain pending; Stage 6 overall is not yet complete.
+
 Goal: connect persistence to iCloud once local behavior is stable.
 
 Execution constraints (user update 2026-09-13):
@@ -718,9 +721,9 @@ Execution constraints (user update 2026-09-13):
 - Future multi-user/household sharing remains a goal. Review sync architecture against that goal before choosing the final integration approach: preserve stable IDs, keep account/database/record ownership and sharing concerns behind repository/sync boundaries, and avoid making the UI or domain logic depend on a single user's private database. Evaluate whether the proposed SwiftData-first approach leaves a workable sharing path; retain an explicit CloudKit option if needed. Sharing UI, invitations, and permissions are future scope, not Stage 6 implementation requirements.
 
 Tasks:
-- Enable iCloud/CloudKit entitlements.
-- Try SwiftData CloudKit integration first.
-- Keep repository boundaries strict so explicit CloudKit sync remains available as an escape hatch.
+- Prepare opt-in iCloud/CloudKit entitlement/configuration templates; actual signing and container provisioning remain pending the developer account.
+- Review SwiftData CloudKit integration first: completed; use the explicit fallback described in sync-design.md for deterministic reconciliation and future zone sharing.
+- Keep repository and sync transport boundaries strict.
 - Map local persistence models to CloudKit-compatible records or SwiftData CloudKit configuration.
 - Validate sync behavior for:
     - pets
@@ -737,6 +740,28 @@ Tasks:
 - Define conflict behavior for simultaneous edits, delete versus edit, and concurrent reminder completion. Prevent duplicate events/history/next occurrences; test partial multi-pet completion across devices.
 - Surface local fetch/save/container errors with a recoverable offline path rather than silently treating failure as no data.
 - Confirm signing team, iCloud container access, and two usable same-account test contexts before claiming sync verification.
+
+### Stage 6 code-readiness implementation (2026-09-13)
+
+The SwiftData-first review selected the planned explicit CloudKit fallback. See [sync-design.md](sync-design.md) for the decision, wire contract, durability, conflicts, scoped ownership, future sharing, and activation procedure.
+
+- Implemented mapping for pets, care events, Health, saved options, and reminder definitions/targets/completions. Local SwiftData schema and stable IDs are preserved; managed CloudKit mirroring is explicitly disabled. A populated Stage 5 store-copy upgrade test preserves all six record types.
+- Added a durable prepared-write journal, exact-version acknowledgements, account/container/environment scope, tombstones, deterministic edit conflicts, and recovery before network metadata operations.
+- Concurrent reminder completion merges target outcomes into one logical event/history/next occurrence; repeated submissions, partial multi-pet completion, historical edits/deletions, scheduling calendars, newer definition edits, and stale sheets are covered by tests.
+- Implemented paginated full-zone CloudKit catch-up, optimistic writes/conflict retry, foreground/manual/local-write sync, and active minute polling. Imported changes refresh the store and local notifications. Background push, incremental fetch optimization, and sharing UI remain future scope.
+- Replaced swallowed fetch/save errors and fatal container startup with surfaced retry paths and atomic local transactions. Invalid/lossy imports roll back. Cloud-configured startup does not auto-seed; test hosts have separate stores/defaults and cannot enable CloudKit. Cloud-configured debug reset is unavailable.
+- Added opt-in configuration/entitlement templates without changing ordinary local builds. Actual signed entitlements, container schema, and live behavior have NOT been verified.
+
+Local verification (2026-09-13):
+
+- Normal app/unit/UI build passed: `/tmp/pettracker-6-verified-build.log`.
+- Optional CloudKit-flagged, unsigned template build passed: `/tmp/pettracker-6-cloudkit-final-build.log`. Its unit run verified test-host isolation and found one calendar assertion comparing unspecified minutes with canonical zero minutes; the assertion now compares canonical payloads without changing the recurrence/time-zone check.
+- Final normal-build unit run: **111 tests, 0 failures**. Log `/tmp/pettracker-6-verified-unit.log`; result `DerivedData/Logs/Test/Test-PetTrackerApp-2026.09.13_18-46-34--0700.xcresult`.
+- Full UI regression: **22 tests, 0 failures**, including failed-startup retry preserving existing test history. Log `/tmp/pettracker-6-full-ui.log`; result `DerivedData/Logs/Test/Test-PetTrackerApp-2026.09.13_18-28-35--0700.xcresult`. Subsequent changes were sync validation/canonicalization and unit-host isolation, with the local UI behavior unchanged.
+- Latest normal app installed and launched successfully on iPhone 17; Home screenshot showed no startup failure. The UI runner was removed; only the current app bundle remains on that simulator. Other simulators/personal data were not reset for Stage 6.
+- These checks cover replica/model/mock transport behavior, not actual iCloud network operation. No account/container or signed entitlement verification was performed.
+
+Stage 6's live acceptance checks remain pending: provision signing/container/environment and validate a backed-up populated dataset against an empty second same-account context, including offline/reconnect and concurrent completions. Do not claim the full Stage 6 milestone complete until those pass.
 
 Mobile/sync concepts to explain while building:
 - CloudKit containers and entitlements.

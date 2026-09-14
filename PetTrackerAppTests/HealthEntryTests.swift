@@ -113,14 +113,14 @@ final class HealthEntryTests: XCTestCase {
         }
         let container = try ModelContainer(for: schema, configurations: [configuration])
         let repository = SwiftDataHealthEntryRepository(context: ModelContext(container))
-        XCTAssertEqual(Set(repository.listHealthEntries()), Set(originals))
+        XCTAssertEqual(Set(try repository.listHealthEntries()), Set(originals))
         var edited = originals[0]
         edited.title = "Corrected weight"
         edited.notes = "At home"
         edited.updatedAt = now
         try repository.saveHealthEntry(edited)
-        XCTAssertEqual(repository.listHealthEntries().count, 4)
-        XCTAssertEqual(repository.listHealthEntries().first { $0.id == edited.id }, edited)
+        XCTAssertEqual(try repository.listHealthEntries().count, 4)
+        XCTAssertEqual(try repository.listHealthEntries().first { $0.id == edited.id }, edited)
     }
 }
 

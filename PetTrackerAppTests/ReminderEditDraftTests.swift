@@ -161,14 +161,14 @@ final class ReminderEditDraftTests: XCTestCase {
         let container = try ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)])
         let repository = SwiftDataReminderRepository(context: ModelContext(container))
         let original = Reminder(title: "Routine", mode: .pureReminder, eventType: nil, dueAt: now, dueStyle: .timestamp, targets: [ReminderTarget(petID: pet.id)])
-        repository.saveReminder(original)
+        try repository.saveReminder(original)
         var draft = ReminderEditDraft(reminder: original, now: now)
         draft.title = "Updated"
         draft.repeatStyle = .every
         draft.recurrenceUnit = .month
         draft.interval = 2
         let edited = try XCTUnwrap(draft.makeReminder(pets: [pet]))
-        repository.saveReminder(edited)
-        XCTAssertEqual(repository.listReminders(includeMuted: true), [edited])
+        try repository.saveReminder(edited)
+        XCTAssertEqual(try repository.listReminders(includeMuted: true), [edited])
     }
 }

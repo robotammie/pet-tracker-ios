@@ -1,28 +1,28 @@
 import Foundation
 
 protocol PetRepository {
-    func listPets() -> [Pet]
-    func savePet(_ pet: Pet)
-    func deletePet(id: UUID)
+    func listPets() throws -> [Pet]
+    func savePet(_ pet: Pet) throws
+    func deletePet(id: UUID) throws
 }
 
 protocol CareEventRepository {
-    func listEvents() -> [CareEvent]
-    func saveEvent(_ event: CareEvent)
-    func deleteEvent(id: UUID)
+    func listEvents() throws -> [CareEvent]
+    func saveEvent(_ event: CareEvent) throws
+    func deleteEvent(id: UUID) throws
 }
 
 protocol SavedEventOptionRepository {
-    func listSavedOptions(includeDeleted: Bool) -> [SavedEventOption]
-    func saveSavedOption(_ option: SavedEventOption)
-    func softDeleteSavedOption(id: UUID, at date: Date)
+    func listSavedOptions(includeDeleted: Bool) throws -> [SavedEventOption]
+    func saveSavedOption(_ option: SavedEventOption) throws
+    func softDeleteSavedOption(id: UUID, at date: Date) throws
 }
 
 protocol ReminderRepository {
-    func listReminders(includeMuted: Bool) -> [Reminder]
-    func saveReminder(_ reminder: Reminder)
-    func muteReminder(id: UUID)
-    func deleteReminder(id: UUID)
+    func listReminders(includeMuted: Bool) throws -> [Reminder]
+    func saveReminder(_ reminder: Reminder) throws
+    func muteReminder(id: UUID) throws
+    func deleteReminder(id: UUID) throws
 }
 
 protocol UserSettingsRepository {
@@ -31,6 +31,6 @@ protocol UserSettingsRepository {
 }
 
 protocol HealthEntryRepository {
-    func listHealthEntries() -> [HealthEntry]
+    func listHealthEntries() throws -> [HealthEntry]
     func saveHealthEntry(_ entry: HealthEntry) throws
 }

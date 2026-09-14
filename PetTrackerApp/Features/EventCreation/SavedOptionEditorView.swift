@@ -54,10 +54,8 @@ struct SavedOptionEditorView: View {
                         return
                     }
 
-                    store.saveSavedOptionAndRefresh(savedOption)
-                    if option == nil, let reminder = viewModel.makeAutoqueuedReminder(savedOption: savedOption) {
-                        store.saveReminderAndRefresh(reminder)
-                    }
+                    let reminder = option == nil ? viewModel.makeAutoqueuedReminder(savedOption: savedOption) : nil
+                    guard store.saveSavedOptionAndRefresh(savedOption, autoqueuedReminder: reminder) else { return }
                     onSaved?(savedOption)
                     dismiss()
                 }
@@ -223,5 +221,6 @@ struct SavedOptionCreationSheet: View {
                     }
                 }
         }
+        .persistenceErrorBanner()
     }
 }

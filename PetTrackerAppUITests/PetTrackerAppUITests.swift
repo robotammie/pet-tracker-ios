@@ -6,6 +6,20 @@ final class PetTrackerAppUITests: XCTestCase {
         continueAfterFailure = false
     }
 
+    func testStartupFailureRetryKeepsExistingTestHistory() {
+        let app = launchApp()
+        app.buttons["home.quickAdd.Litter"].tap()
+        app.buttons["litterCreation.save"].tap()
+        XCTAssertTrue(app.staticTexts["Litter cleaned"].waitForExistence(timeout: 5))
+        app.terminate()
+        app.launchArguments = ["-uiTesting", "-uiTestingStartupFailure"]
+        app.launch()
+        XCTAssertTrue(app.buttons["persistence.retry"].waitForExistence(timeout: 8))
+        app.buttons["persistence.retry"].tap()
+        XCTAssertTrue(app.navigationBars["Pet Tracker"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["Litter cleaned"].waitForExistence(timeout: 5))
+    }
+
     func testLaunchShowsPrimaryTabs() {
         let app = launchApp()
 

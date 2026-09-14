@@ -29,14 +29,14 @@ final class CareEventDeletionTests: XCTestCase {
         let repository = SwiftDataCareEventRepository(context: ModelContext(container))
         let first = CareEvent(type: .litter, petID: nil, data: .litter(LitterEventData()))
         let second = CareEvent(type: .litter, petID: nil, data: .litter(LitterEventData()))
-        repository.saveEvent(first)
-        repository.saveEvent(second)
+        try repository.saveEvent(first)
+        try repository.saveEvent(second)
         let backing = PetCareStore()
         let store = PetCareStore()
         store.configurePersistence(petRepository: backing, eventRepository: repository, savedOptionRepository: backing, reminderRepository: backing)
         store.refreshFromPersistence()
         store.deleteCareEventAndRefresh(id: first.id)
-        XCTAssertEqual(repository.listEvents(), [second])
+        XCTAssertEqual(try repository.listEvents(), [second])
         XCTAssertEqual(store.events, [second])
     }
 }

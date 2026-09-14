@@ -7,6 +7,7 @@ struct EventCreationSheet: View {
     var body: some View {
         NavigationStack {
             destination
+                .persistenceErrorBanner()
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Close") {

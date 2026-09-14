@@ -47,7 +47,7 @@ final class PetEditorTests: XCTestCase {
         edited.name = "Edited"
         edited.caloriesPerDay = nil
         store.savePetAndRefresh(edited)
-        XCTAssertEqual(repository.listPets(), [edited])
+        XCTAssertEqual(try repository.listPets(), [edited])
         XCTAssertEqual(store.pets, [edited])
     }
 }

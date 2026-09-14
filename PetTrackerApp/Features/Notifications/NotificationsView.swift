@@ -158,6 +158,7 @@ private struct ReminderCompletionSheet: View {
                 }
             }
             .medicationTimingAlert(.reminderCompletion)
+            .persistenceErrorBanner()
             .navigationTitle("Mark Complete")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

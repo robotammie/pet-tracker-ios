@@ -1,6 +1,6 @@
 import Foundation
 
-struct Pet: Identifiable, Hashable {
+struct Pet: Identifiable, Hashable, Codable {
     let id: UUID
     var name: String
     var caloriesPerDay: Int?
@@ -82,7 +82,7 @@ enum CareEventData: Hashable, Codable {
     case medicine(MedicineEventData)
 }
 
-struct CareEvent: Identifiable, Hashable {
+struct CareEvent: Identifiable, Hashable, Codable {
     let id: UUID
     var type: CareEventType
     var petID: UUID?
@@ -112,12 +112,12 @@ struct CareEvent: Identifiable, Hashable {
     }
 }
 
-enum SavedOptionData: Hashable {
+enum SavedOptionData: Hashable, Codable {
     case food(SavedFoodData)
     case medicine(SavedMedicineData)
 }
 
-struct SavedFoodData: Hashable {
+struct SavedFoodData: Hashable, Codable {
     var name: String
     var officialName: String?
     var unit: FoodUnit
@@ -134,7 +134,7 @@ struct SavedFoodData: Hashable {
     }
 }
 
-struct SavedMedicineData: Hashable {
+struct SavedMedicineData: Hashable, Codable {
     var name: String
     var purpose: String?
     var dosage: Double
@@ -180,7 +180,7 @@ struct PetMedicationDoseInterval: Hashable, Codable {
     var interval: MedicationDoseInterval
 }
 
-struct SavedEventOption: Identifiable, Hashable {
+struct SavedEventOption: Identifiable, Hashable, Codable {
     let id: UUID
     var eventType: CareEventType
     var data: SavedOptionData
@@ -209,21 +209,21 @@ struct SavedEventOption: Identifiable, Hashable {
     }
 }
 
-enum ReminderMode: String, CaseIterable, Identifiable {
+enum ReminderMode: String, CaseIterable, Identifiable, Codable {
     case pureReminder = "Reminder"
     case reminderToEvent = "Reminder to Event"
 
     var id: String { rawValue }
 }
 
-enum ReminderDueStyle: String, CaseIterable, Identifiable {
+enum ReminderDueStyle: String, CaseIterable, Identifiable, Codable {
     case timestamp = "Timestamp"
     case dayOnly = "Day Only"
 
     var id: String { rawValue }
 }
 
-enum ReminderStatus: String, CaseIterable, Identifiable {
+enum ReminderStatus: String, CaseIterable, Identifiable, Codable {
     case active = "Active"
     case completed = "Completed"
     case muted = "Muted"
@@ -231,7 +231,7 @@ enum ReminderStatus: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-enum RecurrenceUnit: String, CaseIterable, Identifiable {
+enum RecurrenceUnit: String, CaseIterable, Identifiable, Codable {
     case hour = "Hour"
     case day = "Day"
     case week = "Week"
@@ -240,16 +240,16 @@ enum RecurrenceUnit: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-enum RecurrenceRule: Hashable {
+enum RecurrenceRule: Hashable, Codable {
     case every(value: Int, unit: RecurrenceUnit)
     case timesPerDay(count: Int, times: [DateComponents])
 }
 
-struct MedicineCadence: Hashable {
+struct MedicineCadence: Hashable, Codable {
     var rule: RecurrenceRule
 }
 
-struct ReminderSchedule: Hashable {
+struct ReminderSchedule: Hashable, Codable {
     var recurrenceRule: RecurrenceRule?
     var endDate: Date?
 }
@@ -268,7 +268,7 @@ struct ReminderTarget: Identifiable, Hashable, Codable {
     }
 }
 
-struct Reminder: Identifiable, Hashable {
+struct Reminder: Identifiable, Hashable, Codable {
     let id: UUID
     var title: String
     var mode: ReminderMode

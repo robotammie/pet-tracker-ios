@@ -93,6 +93,8 @@ Step 6 must include Health records, preserve existing local history, prevent dup
 
 Sync execution update (2026-09-13): Apple developer account setup is pending; proceed with code preparation and local verification while leaving live CloudKit provisioning/verification pending. Future multi-user/household sharing remains a product goal. Keep stable domain identities and isolate account/database ownership and sharing concerns behind repository/sync boundaries; assess the integration choice for a future sharing path before committing to single-user assumptions. Sharing UI, invitations, and permissions remain future work. Data stays local and/or in users' iCloud, without app server-side state.
 
+Stage 6 implementation: explicit CloudKit transport over the unchanged local SwiftData schema, a durable offline journal with tombstones, deterministic completion reconciliation, and account/container/environment/zone scope boundaries. Normal builds remain local-only; opt-in templates await provisioning. All app data, including Health, is mapped; notification preferences remain device-local. Foreground/import refresh and local notification rescheduling are implemented. No background push or sharing UI is included. See [sync-design.md](sync-design.md) for conflicts, durability, activation, and the future household-sharing path. Local tests cannot establish live CloudKit correctness.
+
 ## Data
 ### pet
 name: str
@@ -372,3 +374,6 @@ Detailed approved behavior and acceptance checks are in [health-design-options.m
 Stages 5.7–5.8 were verified in sequence: 5.7 passed 48 unit tests and its focused edit/relaunch/cancel UI test before 5.8 began. Final 5.8 verification passed the app/test build, 61 unit tests, and the full 13-test UI suite. Stage 5.9 passed the app/test build, 68 unit tests, and all 14 UI tests. See `plan.md` for logs and coverage.
 
 Stage 5.10 completed the approved local gaps before CloudKit: pet name/calorie-goal add/edit with stable IDs; reminder creation/editing with recurrence/end dates, stored per-target payloads, and preserved completed history; Events +; confirmed event deletion; and inline saved-option creation/selection. Final build, 83 unit tests, and all 21 UI tests passed. No unanswered product decisions remain for the approved pre-sync scope.
+
+
+Stage 6 code-readiness verification: normal and optional CloudKit template builds passed; 111 unit tests and all 22 UI tests passed. Account/container provisioning, signed entitlements, and live two-context sync remain pending. This is not a completed live-sync milestone.

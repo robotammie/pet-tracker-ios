@@ -20,8 +20,7 @@ struct LitterEventCreationView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
-                    store.saveCareEventAndRefresh(viewModel.makeEvent())
-                    dismiss()
+                    if store.saveCareEventAndRefresh(viewModel.makeEvent()) { dismiss() }
                 }
                 .accessibilityIdentifier("litterCreation.save")
             }

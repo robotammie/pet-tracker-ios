@@ -7,6 +7,12 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section("Storage") {
+                Text(store.syncStatus).accessibilityIdentifier("settings.sync.status")
+                if let requestSync = store.requestSyncAction {
+                    Button("Sync Now", action: requestSync).accessibilityIdentifier("settings.sync.now")
+                }
+            }
             Section("Notifications") {
                 notificationPreferenceControls(
                     preferences: $store.settings.globalNotificationPreferences,
@@ -60,11 +66,13 @@ struct SettingsView: View {
             }
 
 #if DEBUG
+            if store.allowsDevelopmentReset {
             Section("Development") {
                 Button("Reset and Reseed Local Data", role: .destructive) {
                     isShowingResetConfirmation = true
                 }
                 .accessibilityIdentifier("settings.development.resetAndReseed")
+            }
             }
 #endif
         }
