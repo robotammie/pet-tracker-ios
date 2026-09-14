@@ -593,7 +593,7 @@ Acceptance checks:
 Stage 5.5 notes:
 - Debug UI automation uses a separate persistent SwiftData store (`UITests.store`) and UserDefaults suite (`PetTrackerApp.UITests`). Public seed fixtures begin with no event history. `-uiTestingReset` resets only the test data; relaunch checks omit it. A no-op notification scheduler avoids prompts and notification side effects.
 - `scripts/test.sh` and `scripts/test-without-building.sh` select only unit tests. `scripts/test-ui.sh` builds and runs only UI tests. `SIMULATOR_NAME` now drives the default destination too.
-- First launch still seeds sample data. Pet editing and a general reminder creation/editing screen remain unimplemented; medicine options can autoqueue reminders. These are recorded product gaps, not new Stage 5.5 scope.
+- At this Stage 5.5 checkpoint, pet editing and general reminder creation/editing remained unimplemented; these were subsequently included in Stage 5.10. First launch still seeds sample data.
 - Visual review on iPhone 17 / iOS 26.5 checked Home, settings, and the food form at the largest accessibility text size. Reminder titles and due times now stack without narrow-column wrapping. The original simulator text size was restored. This is a focused simulator review, not an exhaustive VoiceOver or real-device audit.
 - Verified on 2026-09-13:
     - `scripts/build-for-testing.sh`: app and both test targets compile.
@@ -680,13 +680,13 @@ Approved design is in `health-design-options.md`. Follow-up reminders, charts, a
 
 Completed local scope is verified and committed as `5151299`. No unanswered choices remain for Stages 5.6–5.9. The approved Health scope and explicitly deferred features remain unchanged; medication interaction work is excluded.
 
-Original-design product gaps remain: pet add/edit, general reminder creation/editing, direct Events creation actions, inline saved-option creation/save-update, and care-event deletion UI. See design.md's implementation boundary for current alternatives and the Stage 3 food-field decision. The user reviewed each gap and approved the minimal versions below before Stage 6. They remain unimplemented until Stage 5.10 is verified.
+The original-design gaps reviewed before Stage 5.10 were: pet add/edit, general reminder creation/editing, direct Events creation actions, inline saved-option creation/save-update, and care-event deletion UI. See design.md's implementation boundary for current alternatives and the Stage 3 food-field decision. The user reviewed each gap and approved the minimal versions below before Stage 6. Their approved minimal versions are complete and verified in Stage 5.10.
 
 Do not reset/reseed personal history to make a CloudKit schema change pass. Prove an upgrade path on a copy of a populated local store before enabling sync. Current repositories swallow many fetch/save errors; error reporting and recoverable container startup must be included in sync readiness, so failure is not mistaken for an empty database.
 
-## Stage 5.10: Remaining Local Workflows - Approved, Not Started
+## Stage 5.10: Remaining Local Workflows - Complete
 
-The user approved all five items individually before Stage 6:
+The user approved all five items individually before Stage 6. The plan was committed as `ebe568a`; implementation is complete and verified:
 
 1. **Pet add/edit:** name and optional daily calorie goal. Preserve the pet ID and linked history on edit. Pet deletion is deferred.
 2. **General reminder creation/editing:** title, pure reminder or event-linked mode, due timestamp/day-only, recurrence, optional end date, and applicable pets/targets. Preserve completed history when editing an active definition.
@@ -695,6 +695,19 @@ The user approved all five items individually before Stage 6:
 5. **Inline saved-option creation:** Add new food/medication opens the existing saved-option editor, then selects the newly saved option on return. Cancel leaves the previous selection unchanged. Food unit/calorie rate remain locked during logging. The broader save/update checkbox behavior is deferred.
 
 Implement and test each workflow before proceeding to the next. Verify ID/history preservation, canceled actions, persistence after relaunch, creation routing, deletion totals, and new-option selection. Run the full unit/UI suites for milestone completion. Do not begin Stage 6 until this local milestone is complete.
+
+Verification on 2026-09-13:
+- Pet workflow: 71 unit tests and focused add/edit/Cancel/relaunch UI test passed before reminder implementation (`/tmp/pettracker-510-pet-unit.log`, `/tmp/pettracker-510-pet-ui.log`).
+- Reminder workflow: 78 unit tests passed, then eight reminder-specific tests passed after the added-pet fix; both creation/edit/Cancel/relaunch and medication-reminder completion UI tests passed (`/tmp/pettracker-510-reminder-unit.log`, `/tmp/pettracker-510-reminder-focused.log`, `/tmp/pettracker-510-reminder-ui-retry.log`). Final reminder coverage has nine passing tests, including option clearing/history restoration.
+- Events + routing passed its focused UI test (`/tmp/pettracker-510-events-add-ui.log`).
+- Deletion: both unit tests and the focused Cancel/confirm/relaunch UI test passed (`/tmp/pettracker-510-delete-focused-retry.log`, `/tmp/pettracker-510-delete-ui-final.log`).
+- Inline medication: factory/dose-identity coverage and save/select/Cancel/relaunch UI passed (`/tmp/pettracker-510-inline-focused.log`, `/tmp/pettracker-510-inline-ui-retry.log`). Inline food and all nine reminder tests passed after full-row touch-target and option-clearing fixes (`/tmp/pettracker-510-inline-food-hitarea.log`).
+- Final app/test build passed (`/tmp/pettracker-510-build-final.log`). All 83 unit tests passed (`/tmp/pettracker-510-unit-final.log`; result `DerivedData/Logs/Test/Test-PetTrackerApp-2026.09.13_17-01-45--0700.xcresult`).
+- All 21 UI tests passed with zero failures in 728 seconds (`/tmp/pettracker-510-ui-final.log`; result `DerivedData/Logs/Test/Test-PetTrackerApp-2026.09.13_17-02-07--0700.xcresult`).
+- Initial test issues were corrected using captured UI evidence: menu visibility/scrolling, nested alert actions, stepper increment identifier, zero replacement, and Home versus Events food-row text. Inline Add new labels now have explicit full-row touch targets after intermittent row taps failed to dispatch.
+- Simulator screenshots confirmed inline editor layout and preserved food selection/amount after Cancel. `git diff --check` passed. Implementation and documentation are included in the requested Stage 5.10 commit. Pet deletion, broader saved-option save/update controls, and other approved future features remain deferred; Stage 6 has not started.
+
+
 
 ## Stage 6: iCloud/CloudKit Sync
 Goal: connect persistence to iCloud once local behavior is stable.

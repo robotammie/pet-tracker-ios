@@ -250,8 +250,14 @@ final class PetTrackerAppUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         let value = field.value as? String ?? ""
         field.tap()
-        field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
-        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: value.count) + text)
+        if value == "0" {
+            field.doubleTap()
+            field.typeText(text)
+        } else {
+            field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: value.count) + text)
+        }
+        XCTAssertEqual(field.value as? String, text)
     }
 
     func testHealthQuickAddRecentPetTimelineEditAndPersistence() {
@@ -294,6 +300,215 @@ final class PetTrackerAppUITests: XCTestCase {
         app.staticTexts["Cat Two"].tap()
         app.segmentedControls.buttons["Health"].tap()
         XCTAssertTrue(app.staticTexts["No health entries yet"].waitForExistence(timeout: 5))
+    }
+
+    func testPetAddEditCancelAndRelaunch() {
+        let app = launchApp()
+        app.tabBars.buttons["Pets"].tap()
+        app.buttons["pets.add"].tap()
+        XCTAssertFalse(app.buttons["petEditor.save"].isEnabled)
+        replaceText(app.textFields["petEditor.name"], with: "New Cat")
+        replaceText(app.textFields["petEditor.calories"], with: "250")
+        app.buttons["petEditor.save"].tap()
+        XCTAssertTrue(app.staticTexts["New Cat"].waitForExistence(timeout: 5))
+        app.staticTexts["New Cat"].tap()
+        app.buttons["petDetail.edit"].tap()
+        replaceText(app.textFields["petEditor.name"], with: "Renamed Cat")
+        app.buttons["petEditor.save"].tap()
+        XCTAssertTrue(app.navigationBars["Renamed Cat"].waitForExistence(timeout: 5))
+        app.buttons["petDetail.edit"].tap()
+        replaceText(app.textFields["petEditor.name"], with: "Canceled Cat")
+        app.buttons["petEditor.cancel"].tap()
+        XCTAssertTrue(app.navigationBars["Renamed Cat"].exists)
+        relaunch(app)
+        app.tabBars.buttons["Pets"].tap()
+        XCTAssertTrue(app.staticTexts["Renamed Cat"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["250 cal/day"].exists)
+    }
+
+    func testReminderCreateEditCancelAndRelaunch() {
+        let app = launchApp()
+        app.tabBars.buttons["Reminders"].tap()
+        app.buttons["reminders.add"].tap()
+        XCTAssertFalse(app.buttons["reminderEditor.save"].isEnabled)
+        replaceText(app.textFields["reminderEditor.title"], with: "Fountain reminder")
+        chooseMenu(app.buttons["reminderEditor.repeat"], choice: "Every interval", in: app)
+        app.buttons["reminderEditor.save"].tap()
+        XCTAssertTrue(app.staticTexts["Fountain reminder"].waitForExistence(timeout: 5))
+        app.staticTexts["Fountain reminder"].swipeLeft()
+        app.buttons["reminder.edit"].tap()
+        replaceText(app.textFields["reminderEditor.title"], with: "Edited fountain")
+        app.buttons["reminderEditor.save"].tap()
+        XCTAssertTrue(app.staticTexts["Edited fountain"].waitForExistence(timeout: 5))
+        app.staticTexts["Edited fountain"].swipeLeft()
+        app.buttons["reminder.edit"].tap()
+        replaceText(app.textFields["reminderEditor.title"], with: "Canceled fountain")
+        app.buttons["reminderEditor.cancel"].tap()
+        XCTAssertTrue(app.staticTexts["Edited fountain"].exists)
+        relaunch(app)
+        app.tabBars.buttons["Reminders"].tap()
+        XCTAssertTrue(app.staticTexts["Edited fountain"].waitForExistence(timeout: 5))
+    }
+
+    func testGeneralMedicineReminderLogsStoredPetDose() {
+        let app = launchApp()
+        app.tabBars.buttons["Reminders"].tap()
+        app.buttons["reminders.add"].tap()
+        replaceText(app.textFields["reminderEditor.title"], with: "General dose")
+        chooseMenu(app.buttons["reminderEditor.mode"], choice: "Reminder to Event", in: app)
+        scrollTo(app.buttons["reminderEditor.eventType"], in: app)
+        chooseMenu(app.buttons["reminderEditor.eventType"], choice: "Medicine", in: app)
+        chooseMenu(app.buttons["reminderEditor.savedOption"], choice: "Medicine Name", in: app)
+        let pet = app.buttons["reminderEditor.pet.11111111-1111-1111-1111-111111111111"]
+        scrollTo(pet, in: app)
+        pet.tap()
+        XCTAssertTrue(app.buttons["reminderEditor.save"].isEnabled)
+        app.buttons["reminderEditor.save"].tap()
+        let title = app.staticTexts["General dose"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        title.swipeLeft()
+        app.buttons["reminder.complete"].tap()
+        app.buttons["reminderCompletion.done"].tap()
+        app.tabBars.buttons["Events"].tap()
+        app.segmentedControls.buttons["Medicine"].tap()
+        XCTAssertTrue(app.staticTexts["Medicine Name · 1 tablet"].waitForExistence(timeout: 5))
+    }
+
+    private func tapWhenReady(_ element: XCUIElement) {
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND hittable == true"), object: element)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 5), .completed)
+        element.tap()
+    }
+
+    private func captureUI(_ app: XCUIApplication, name: String) {
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = name
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        let hierarchy = XCTAttachment(string: app.debugDescription)
+        hierarchy.name = name + " hierarchy"
+        hierarchy.lifetime = .keepAlways
+        add(hierarchy)
+    }
+
+    private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<5 {
+            if element.exists && element.isHittable { return }
+            app.swipeUp()
+        }
+        XCTAssertTrue(element.isHittable)
+    }
+
+    private func chooseMenu(_ picker: XCUIElement, choice: String, in app: XCUIApplication) {
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        scrollTo(picker, in: app)
+        picker.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5)).tap()
+        let option = app.buttons[choice]
+        guard option.waitForExistence(timeout: 5) else {
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.lifetime = .keepAlways
+            add(screenshot)
+            let hierarchy = XCTAttachment(string: app.debugDescription)
+            hierarchy.lifetime = .keepAlways
+            add(hierarchy)
+            XCTFail("Menu choice missing: \(choice)")
+            return
+        }
+        option.tap()
+    }
+
+    func testEventsAddRoutesToSelectedTypeAndPersists() {
+        let app = launchApp()
+        app.tabBars.buttons["Events"].tap()
+        app.buttons["events.add"].tap()
+        XCTAssertTrue(app.navigationBars["Add Food"].waitForExistence(timeout: 5))
+        app.buttons["eventCreation.close"].tap()
+        app.segmentedControls.buttons["Medicine"].tap()
+        app.buttons["events.add"].tap()
+        XCTAssertTrue(app.navigationBars["Add Medicine"].waitForExistence(timeout: 5))
+        app.buttons["eventCreation.close"].tap()
+        app.segmentedControls.buttons["Litter"].tap()
+        app.buttons["events.add"].tap()
+        app.buttons["litterCreation.save"].tap()
+        XCTAssertTrue(app.staticTexts["Litter cleaned"].waitForExistence(timeout: 5))
+        relaunch(app)
+        app.tabBars.buttons["Events"].tap()
+        app.segmentedControls.buttons["Litter"].tap()
+        XCTAssertTrue(app.staticTexts["Litter cleaned"].waitForExistence(timeout: 5))
+    }
+
+    func testCareEventDeleteCancelConfirmAndRelaunch() {
+        let app = launchApp()
+        app.buttons["reminder.completeNow.99999999-9999-9999-9999-999999999999"].tap()
+        app.tabBars.buttons["Events"].tap()
+        let event = app.staticTexts["Breakfast Dry Food · 0.25 cup · 95 cal"]
+        XCTAssertTrue(event.waitForExistence(timeout: 5))
+        event.swipeLeft()
+        app.buttons["events.delete"].tap()
+        app.alerts["Delete event?"].buttons["Cancel"].firstMatch.tap()
+        XCTAssertTrue(event.exists)
+        event.swipeLeft()
+        app.buttons["events.delete"].tap()
+        app.alerts["Delete event?"].buttons["Delete"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["No events yet"].waitForExistence(timeout: 5))
+        relaunch(app)
+        app.tabBars.buttons["Events"].tap()
+        XCTAssertTrue(app.staticTexts["No events yet"].waitForExistence(timeout: 5))
+        XCTAssertFalse(event.exists)
+    }
+
+    func testInlineFoodSaveSelectsNewOptionAndCancelPreservesDraft() {
+        let app = launchApp()
+        app.buttons["home.quickAdd.Food"].tap()
+        chooseMenu(app.buttons["foodCreation.savedOption"], choice: "Breakfast Dry Food", in: app)
+        replaceText(app.textFields["foodCreation.amount.Household"], with: "1")
+        tapWhenReady(app.buttons["foodCreation.addOption"])
+        replaceText(app.textFields["savedOption.name"], with: "Canceled food")
+        app.buttons["savedOptionCreation.cancel"].tap()
+        XCTAssertTrue(app.buttons["foodCreation.savedOption"].label.contains("Breakfast Dry Food"))
+        XCTAssertEqual(app.textFields["foodCreation.amount.Household"].value as? String, "1")
+        captureUI(app, name: "Food after cancel")
+        tapWhenReady(app.buttons["foodCreation.addOption"])
+        replaceText(app.textFields["savedOption.name"], with: "Inline food")
+        let calories = app.steppers["savedOption.food.calories"]
+        scrollTo(calories, in: app)
+        calories.buttons["savedOption.food.calories-Increment"].tap()
+        let proof = XCTAttachment(screenshot: app.screenshot())
+        proof.name = "Inline food editor"
+        proof.lifetime = .keepAlways
+        add(proof)
+        app.buttons["savedOption.save"].tap()
+        XCTAssertTrue(app.buttons["foodCreation.savedOption"].label.contains("Inline food"))
+        app.buttons["foodCreation.save"].tap()
+        XCTAssertTrue(app.staticTexts["Inline food · 1 cup"].waitForExistence(timeout: 5))
+        app.tabBars.buttons["Events"].tap()
+        XCTAssertTrue(app.staticTexts["Inline food · 1 cup · 5 cal"].waitForExistence(timeout: 5))
+        relaunch(app)
+        XCTAssertTrue(app.staticTexts["Inline food · 1 cup"].waitForExistence(timeout: 5))
+        app.buttons["home.quickAdd.Food"].tap()
+        app.buttons["foodCreation.savedOption"].coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5)).tap()
+        XCTAssertTrue(app.buttons["Inline food"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Canceled food"].exists)
+        app.buttons["Inline food"].tap()
+    }
+
+    func testInlineMedicationSaveSelectsNewDoseAndCancelPreservesSelection() {
+        let app = launchApp()
+        beginMedicine(in: app)
+        app.buttons["medicineCreation.addOption"].tap()
+        replaceText(app.textFields["savedOption.name"], with: "Canceled medicine")
+        app.buttons["savedOptionCreation.cancel"].tap()
+        XCTAssertTrue(app.buttons["medicineCreation.savedOption"].label.contains("Medicine Name"))
+        app.buttons["medicineCreation.addOption"].tap()
+        replaceText(app.textFields["savedOption.name"], with: "Inline medicine")
+        replaceText(app.textFields["savedOption.medicine.dose"], with: "2")
+        replaceText(app.textFields["savedOption.medicine.unit"], with: "mL")
+        app.buttons["savedOption.save"].tap()
+        XCTAssertTrue(app.buttons["medicineCreation.savedOption"].label.contains("Inline medicine"))
+        app.buttons["medicineCreation.save"].tap()
+        XCTAssertTrue(app.staticTexts["Inline medicine · 2 mL"].waitForExistence(timeout: 5))
+        relaunch(app)
+        XCTAssertTrue(app.staticTexts["Inline medicine · 2 mL"].waitForExistence(timeout: 5))
     }
 
     private func beginMedicine(in app: XCUIApplication) {

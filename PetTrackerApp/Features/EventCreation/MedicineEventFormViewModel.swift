@@ -37,6 +37,12 @@ final class MedicineEventFormViewModel: ObservableObject {
         }
     }
 
+    func selectNewSavedOption(_ option: SavedEventOption) {
+        guard case let .medicine(medicine) = option.data else { return }
+        petDosages = Dictionary(uniqueKeysWithValues: selectedPetIDs.map { ($0, medicine.dosage) })
+        selectSavedOption(option)
+    }
+
     func canSave() -> Bool {
         guard selectedMedicine != nil, !selectedPetIDs.isEmpty else {
             return false

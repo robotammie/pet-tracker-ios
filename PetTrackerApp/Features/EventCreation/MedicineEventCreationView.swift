@@ -4,6 +4,7 @@ struct MedicineEventCreationView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var store: PetCareStore
+    @State private var savedOptionRoute: SavedOptionCreationRoute?
     @StateObject private var viewModel = MedicineEventFormViewModel()
 
     var body: some View {
@@ -19,7 +20,7 @@ struct MedicineEventCreationView: View {
 
             Section("Medicine") {
                 if medicineOptions.isEmpty {
-                    Text("Add a medicine option in Settings > Saved Options > Medicine before logging medicine.")
+                    Text("Add a medication option below or manage saved options in Settings.")
                         .foregroundStyle(.secondary)
                 }
                 Picker("Saved medicine", selection: $viewModel.selectedSavedOptionID) {
@@ -33,6 +34,12 @@ struct MedicineEventCreationView: View {
                 .onChange(of: viewModel.selectedSavedOptionID) { _, selectedID in
                     viewModel.selectSavedOption(medicineOptions.first { $0.id == selectedID })
                 }
+                Button { savedOptionRoute = SavedOptionCreationRoute(eventType: .medicine) } label: {
+                    Text("Add new medication…")
+                        .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless).accessibilityIdentifier("medicineCreation.addOption")
 
                 if let medicine = viewModel.selectedMedicine {
                     LabeledContent("Default dose", value: "\(medicine.dosage.formatted()) \(medicine.unit)")
@@ -50,6 +57,9 @@ struct MedicineEventCreationView: View {
         }
         .medicationTimingAlert(.eventCreation)
         .navigationTitle("Add Medicine")
+        .sheet(item: $savedOptionRoute) { route in
+            SavedOptionCreationSheet(eventType: route.eventType) { option in viewModel.selectNewSavedOption(option) }
+        }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {

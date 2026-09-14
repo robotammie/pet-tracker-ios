@@ -69,6 +69,12 @@
 		A90000000000000000000003 /* HealthEntryEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B90000000000000000000003 /* HealthEntryEditorView.swift */; };
 		A90000000000000000000004 /* HealthTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B90000000000000000000004 /* HealthTimelineView.swift */; };
 		A90000000000000000000005 /* HealthEntryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B90000000000000000000005 /* HealthEntryTests.swift */; };
+		AA1000000000000000000001 /* PetEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000000000000000000001 /* PetEditorView.swift */; };
+		AA1000000000000000000002 /* PetEditorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000000000000000000002 /* PetEditorTests.swift */; };
+		AA1000000000000000000003 /* ReminderEditDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000000000000000000003 /* ReminderEditDraft.swift */; };
+		AA1000000000000000000004 /* ReminderEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000000000000000000004 /* ReminderEditorView.swift */; };
+		AA1000000000000000000005 /* ReminderEditDraftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000000000000000000005 /* ReminderEditDraftTests.swift */; };
+		AA1000000000000000000006 /* CareEventDeletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000000000000000000006 /* CareEventDeletionTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -154,6 +160,12 @@
 		B90000000000000000000003 /* HealthEntryEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Health/HealthEntryEditorView.swift; sourceTree = "<group>"; };
 		B90000000000000000000004 /* HealthTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Health/HealthTimelineView.swift; sourceTree = "<group>"; };
 		B90000000000000000000005 /* HealthEntryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthEntryTests.swift; sourceTree = "<group>"; };
+		BB1000000000000000000001 /* PetEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Pets/PetEditorView.swift; sourceTree = "<group>"; };
+		BB1000000000000000000002 /* PetEditorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetEditorTests.swift; sourceTree = "<group>"; };
+		BB1000000000000000000003 /* ReminderEditDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Notifications/ReminderEditDraft.swift; sourceTree = "<group>"; };
+		BB1000000000000000000004 /* ReminderEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Notifications/ReminderEditorView.swift; sourceTree = "<group>"; };
+		BB1000000000000000000005 /* ReminderEditDraftTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderEditDraftTests.swift; sourceTree = "<group>"; };
+		BB1000000000000000000006 /* CareEventDeletionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareEventDeletionTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 		DD0000000000000000000001 /* PetTrackerApp */ = {
@@ -203,6 +215,9 @@
 				B90000000000000000000002 /* HealthPersistence.swift */,
 				B90000000000000000000003 /* HealthEntryEditorView.swift */,
 				B90000000000000000000004 /* HealthTimelineView.swift */,
+				BB1000000000000000000004 /* ReminderEditorView.swift */,
+				BB1000000000000000000003 /* ReminderEditDraft.swift */,
+				BB1000000000000000000001 /* PetEditorView.swift */,
 				B70000000000000000000001 /* CareEventEditDraft.swift */,
 				BB0000000000000000000010 /* PetListView.swift */,
 				BB0000000000000000000011 /* PetDetailView.swift */,
@@ -266,6 +281,9 @@
 				BB0000000000000000000019 /* RepositoryTests.swift */,
 				B70000000000000000000006 /* MedicationTimingServiceTests.swift */,
 				B90000000000000000000005 /* HealthEntryTests.swift */,
+				BB1000000000000000000006 /* CareEventDeletionTests.swift */,
+				BB1000000000000000000005 /* ReminderEditDraftTests.swift */,
+				BB1000000000000000000002 /* PetEditorTests.swift */,
 				B70000000000000000000003 /* CareEventEditDraftTests.swift */,
 				BB0000000000000000000025 /* SwiftDataPersistenceTests.swift */,
 				BB0000000000000000000038 /* FoodEventFormViewModelTests.swift */,
@@ -464,6 +482,9 @@
 				A90000000000000000000002 /* HealthPersistence.swift in Sources */,
 				A90000000000000000000003 /* HealthEntryEditorView.swift in Sources */,
 				A90000000000000000000004 /* HealthTimelineView.swift in Sources */,
+				AA1000000000000000000004 /* ReminderEditorView.swift in Sources */,
+				AA1000000000000000000003 /* ReminderEditDraft.swift in Sources */,
+				AA1000000000000000000001 /* PetEditorView.swift in Sources */,
 				A70000000000000000000001 /* CareEventEditDraft.swift in Sources */,
 				AA0000000000000000000010 /* PetListView.swift in Sources */,
 				AA0000000000000000000011 /* PetDetailView.swift in Sources */,
@@ -481,6 +502,9 @@
 				AA0000000000000000000019 /* RepositoryTests.swift in Sources */,
 				A70000000000000000000006 /* MedicationTimingServiceTests.swift in Sources */,
 				A90000000000000000000005 /* HealthEntryTests.swift in Sources */,
+				AA1000000000000000000006 /* CareEventDeletionTests.swift in Sources */,
+				AA1000000000000000000005 /* ReminderEditDraftTests.swift in Sources */,
+				AA1000000000000000000002 /* PetEditorTests.swift in Sources */,
 				A70000000000000000000003 /* CareEventEditDraftTests.swift in Sources */,
 				AA0000000000000000000024 /* SwiftDataPersistenceTests.swift in Sources */,
 				AA0000000000000000000037 /* FoodEventFormViewModelTests.swift in Sources */,

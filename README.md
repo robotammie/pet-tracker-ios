@@ -2,7 +2,7 @@
 
 Pet Tracker is a personal iOS app for tracking cat care events, reminders, saved autofill data, and notification-driven care routines.
 
-The app is in early implementation. Stages 0 through 5.9 are complete: the SwiftUI project shell exists, builds for the iOS Simulator, launches with sample data, persists locally with SwiftData, supports core event creation plus saved food/medicine options, has reminder completion/ignore behavior with best-effort local notifications, and includes focused notification settings.
+The app is in early implementation. Stages 0 through 5.10 are complete: the SwiftUI project shell exists, builds for the iOS Simulator, launches with sample data, persists locally with SwiftData, supports core event creation plus saved food/medicine options, has reminder completion/ignore behavior with best-effort local notifications, and includes focused notification settings.
 
 ## Project Goals
 
@@ -79,7 +79,7 @@ Implemented so far:
 - Saved medicine autoqueue for daily reminders.
 - Unit tests for validation, calorie calculation, recurrence scheduling, hard delete, soft delete, reminder mute behavior, multi-pet reminder completion, and reminder persistence.
 
-The app now has local persistence, core event creation, reminder actions, local notification scheduling, and notification settings. There is no iCloud sync yet. First launch loads development sample data, not an onboarding flow. Pets currently come from seed data; there is no pet editor yet. New reminders can be autoqueued when saving medicine options; a general reminder creation/editing screen is not yet implemented.
+The app now has local persistence, core event creation, reminder actions, local notification scheduling, and notification settings. There is no iCloud sync yet. First launch loads development sample data, not an onboarding flow. Pets can be added from Pets > + and edited from pet detail > Edit Pet, with an optional daily calorie goal. Reminders > + creates pure or event-linked reminders with due style, recurrence, end date, and pet targets; swipe an active reminder to Edit. Completed history is preserved. Events > + opens the selected event type; swipe an event to Delete with confirmation. Logging forms offer Add new food/medication and select the saved result; Cancel preserves the previous selection. Stage 5.10 is complete, verified with 83 unit tests and all 21 UI tests.
 
 To correct a historical event, open Events, choose a pet filter if needed, and tap the event. Food calories are edited explicitly; recalculation uses the rate stored with that event, when available. Editing an event leaves saved options and reminder history unchanged.
 
@@ -177,4 +177,4 @@ Keep detailed requirements in `design.md` and detailed execution steps in `plan.
 
 ## Suggested Next Milestone
 
-Stage 5.5 local polish is complete, with separate unit/UI test workflows, seven passing UI smoke tests, accessibility improvements, and reset/reseed documentation. Stage 5.6 small design updates are complete, verified with 44 unit tests and 8 UI tests. Stage 5.7 past-event editing and Stage 5.8 medication timing are complete. Final verification passed the app/test build, 61 unit tests, and all 13 UI tests. Stage 5.9 Health & Life is complete, verified with 68 unit tests and all 14 UI tests; [health-design-options.md](health-design-options.md) records the selected design. CloudKit follows the agreed local changes. See `plan.md` for current verification results.
+Stage 5.5 local polish is complete, with separate unit/UI test workflows, seven passing UI smoke tests, accessibility improvements, and reset/reseed documentation. Stage 5.6 small design updates are complete, verified with 44 unit tests and 8 UI tests. Stage 5.7 past-event editing and Stage 5.8 medication timing are complete. Final verification passed the app/test build, 61 unit tests, and all 13 UI tests. Stage 5.9 Health & Life is complete, verified with 68 unit tests and all 14 UI tests; [health-design-options.md](health-design-options.md) records the selected design. Stage 5.10 completes pet add/edit, general reminder forms, Events creation/deletion, and inline saved-option creation. Final build, 83 unit tests, and all 21 UI tests passed. Stage 6 CloudKit is next when requested. See `plan.md` for current verification results.

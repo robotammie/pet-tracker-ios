@@ -4,11 +4,13 @@ private enum PetDetailSection { case care, health }
 
 struct PetDetailView: View {
     @EnvironmentObject private var store: PetCareStore
-    let pet: Pet
+    private let initialPet: Pet
+    private var pet: Pet { store.pets.first { $0.id == initialPet.id } ?? initialPet }
+    @State private var editorRoute: PetEditorRoute?
     @State private var selectedSection: PetDetailSection
 
     init(pet: Pet, initialHealth: Bool = false) {
-        self.pet = pet
+        self.initialPet = pet
         _selectedSection = State(initialValue: initialHealth ? .health : .care)
     }
 
@@ -32,6 +34,13 @@ struct PetDetailView: View {
             else { careList }
         }
         .navigationTitle(pet.name)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Edit Pet") { editorRoute = PetEditorRoute(pet: pet) }
+                    .accessibilityIdentifier("petDetail.edit")
+            }
+        }
+        .sheet(item: $editorRoute) { route in PetEditorView(pet: route.pet) }
     }
 
     private var careList: some View {

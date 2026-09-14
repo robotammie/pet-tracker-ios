@@ -5,6 +5,7 @@ struct NotificationsView: View {
     @State private var completionDraft: ReminderCompletionDraft?
     @State private var ignoreDraft: ReminderIgnoreDraft?
     @State private var isCompletedExpanded = false
+    @State private var editorRoute: ReminderEditorRoute?
 
     var body: some View {
         List {
@@ -19,7 +20,9 @@ struct NotificationsView: View {
                         ) {
                             store.completeReminderNowAndRefresh(id: reminder.id)
                         }
-                            .swipeActions(edge: .trailing) {
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button("Edit") { editorRoute = ReminderEditorRoute(reminder: reminder) }
+                                    .tint(.blue).accessibilityIdentifier("reminder.edit")
                                 Button("Done") {
                                     startCompletion(reminder)
                                 }
@@ -63,6 +66,13 @@ struct NotificationsView: View {
             }
         }
         .navigationTitle("Reminders")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { editorRoute = ReminderEditorRoute() } label: { Image(systemName: "plus") }
+                    .accessibilityLabel("Add reminder").accessibilityIdentifier("reminders.add")
+            }
+        }
+        .sheet(item: $editorRoute) { route in ReminderEditorView(reminder: route.reminder) }
         .sheet(item: $completionDraft) { draft in
             ReminderCompletionSheet(draft: draft)
                 .environmentObject(store)

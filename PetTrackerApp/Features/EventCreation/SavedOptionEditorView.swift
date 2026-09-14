@@ -5,9 +5,11 @@ struct SavedOptionEditorView: View {
     @EnvironmentObject private var store: PetCareStore
     @StateObject private var viewModel: SavedOptionFormViewModel
     private let option: SavedEventOption?
+    private let onSaved: ((SavedEventOption) -> Void)?
 
-    init(eventType: CareEventType, option: SavedEventOption? = nil) {
+    init(eventType: CareEventType, option: SavedEventOption? = nil, onSaved: ((SavedEventOption) -> Void)? = nil) {
         self.option = option
+        self.onSaved = onSaved
         _viewModel = StateObject(wrappedValue: SavedOptionFormViewModel(
             option: option,
             eventType: eventType
@@ -56,6 +58,7 @@ struct SavedOptionEditorView: View {
                     if option == nil, let reminder = viewModel.makeAutoqueuedReminder(savedOption: savedOption) {
                         store.saveReminderAndRefresh(reminder)
                     }
+                    onSaved?(savedOption)
                     dismiss()
                 }
                 .disabled(!viewModel.canSave())
@@ -96,7 +99,7 @@ struct SavedOptionEditorView: View {
 
             Stepper(value: $viewModel.caloriesPerUnit, in: 0...3000, step: 5) {
                 Text("Calories per \(viewModel.foodUnit.rawValue): \(viewModel.caloriesPerUnit)")
-            }
+            }.accessibilityIdentifier("savedOption.food.calories")
         }
     }
 
@@ -111,9 +114,11 @@ struct SavedOptionEditorView: View {
                 TextField("Dose", value: $viewModel.dosage, format: .number)
                     .multilineTextAlignment(.trailing)
                     .keyboardType(.decimalPad)
+                    .accessibilityIdentifier("savedOption.medicine.dose")
             }
 
             TextField("Unit", text: $viewModel.medicineUnit)
+                .accessibilityIdentifier("savedOption.medicine.unit")
         }
     }
 
@@ -137,7 +142,7 @@ struct SavedOptionEditorView: View {
                     togglePet: viewModel.toggleReminderPet
                 )
 
-                Text("Repeats every day. More schedule controls will come in the reminder editor.")
+                Text("Repeats every day. Edit the schedule later from Reminders.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -196,5 +201,27 @@ struct SavedOptionEditorView: View {
     NavigationStack {
         SavedOptionEditorView(eventType: .food)
             .environmentObject(PetCareStore.preview)
+    }
+}
+
+struct SavedOptionCreationRoute: Identifiable {
+    let id = UUID()
+    let eventType: CareEventType
+}
+
+struct SavedOptionCreationSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let eventType: CareEventType
+    let onSaved: (SavedEventOption) -> Void
+    var body: some View {
+        NavigationStack {
+            SavedOptionEditorView(eventType: eventType, onSaved: onSaved)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { dismiss() }
+                            .accessibilityIdentifier("savedOptionCreation.cancel")
+                    }
+                }
+        }
     }
 }

@@ -4,6 +4,7 @@ struct FoodEventCreationView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var store: PetCareStore
+    @State private var savedOptionRoute: SavedOptionCreationRoute?
     @StateObject private var viewModel = FoodEventFormViewModel()
 
     var body: some View {
@@ -22,7 +23,7 @@ struct FoodEventCreationView: View {
 
             Section("Food") {
                 if foodOptions.isEmpty {
-                    Text("Add a food option in Settings > Saved Options > Food before logging food.")
+                    Text("Add a food option below or manage saved options in Settings.")
                         .foregroundStyle(.secondary)
                 }
                 Picker("Saved food", selection: $viewModel.selectedSavedOptionID) {
@@ -36,6 +37,12 @@ struct FoodEventCreationView: View {
                 .onChange(of: viewModel.selectedSavedOptionID) { _, selectedID in
                     viewModel.selectSavedOption(foodOptions.first { $0.id == selectedID })
                 }
+                Button { savedOptionRoute = SavedOptionCreationRoute(eventType: .food) } label: {
+                    Text("Add new food…")
+                        .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless).accessibilityIdentifier("foodCreation.addOption")
 
                 if let food = viewModel.selectedFood {
                     LabeledContent("Calories per \(food.unit.rawValue)", value: "\(food.caloriesPerUnit)")
@@ -55,6 +62,9 @@ struct FoodEventCreationView: View {
             }
         }
         .navigationTitle("Add Food")
+        .sheet(item: $savedOptionRoute) { route in
+            SavedOptionCreationSheet(eventType: route.eventType) { option in viewModel.selectSavedOption(option) }
+        }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {

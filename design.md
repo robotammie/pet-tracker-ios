@@ -79,15 +79,15 @@ Prefer an architecture that can support CloudKit from the beginning. If implemen
 
 ## Current implementation boundary (reviewed 2026-09-13)
 
-Stages 0–5.9 are complete; the final build, 68 unit tests, and 14 UI tests passed. Litter icons now use `tray`. The pre-CloudKit updates below take precedence over older descriptions when they differ.
+Stages 0–5.10 are complete; the final build, 83 unit tests, and 21 UI tests passed. Litter icons now use `tray`. The pre-CloudKit updates below take precedence over older descriptions when they differ.
 
-Outstanding original-design capabilities, not implemented by the completed stages:
-- Pet add/edit UI; pets currently come from seed data.
-- General reminder creation/editing UI; saved medicine creation can autoqueue a daily reminder.
-- New-event actions directly on Events and inline new saved options/save-update controls during logging; use Home Quick Add and Settings saved-option management today. Saved food unit/calorie rate are locked during creation, as explicitly selected in Stage 3; historical editing is available.
-- Care-event deletion UI; repository hard deletion exists, but Events currently only supports tap-to-edit. Health add/edit is complete; health deletion was not part of the approved initial scope.
+Original-design capabilities completed in Stage 5.10:
+- Pet add/edit name and optional calorie-goal UI; edits preserve the pet ID and linked history.
+- General reminder creation/editing UI with due style, recurrence/end date, and applicable targets; saved medicine creation can still autoqueue a daily reminder. Completed targets and history are preserved.
+- Events + routes to the selected type. Inline Add new food/medication opens saved-option creation and selects the saved result; Cancel preserves the prior selection. The broader save/update checkbox is deferred. Saved food unit/calorie rate are locked during creation, as explicitly selected in Stage 3; historical editing is available.
+- Confirmed care-event swipe deletion updates history and calorie totals without changing reminder completion history. Health add/edit is complete; health deletion was not part of the approved initial scope.
 
-The user approved completing all five gaps before sync as Stage 5.10: minimal pet name/calorie-goal add/edit; general reminder creation/editing with preserved completed history; Events + routed to the selected type; confirmed care-event swipe deletion without changing reminder history; and inline Add new food/medication using the existing editor and selecting the result. Pet deletion and the broader save/update checkbox behavior remain deferred. Food units/calorie rates stay locked during logging. These decisions are approved but not yet implemented. The older statement that litter has no history page means no separate litter-only screen: the shared Events tab includes litter history, as implemented in Stage 2.
+The user approved completing all five gaps before sync as Stage 5.10: minimal pet name/calorie-goal add/edit; general reminder creation/editing with preserved completed history; Events + routed to the selected type; confirmed care-event swipe deletion without changing reminder history; and inline Add new food/medication using the existing editor and selecting the result. Pet deletion and the broader save/update checkbox behavior remain deferred. Food units/calorie rates stay locked during logging. These decisions are implemented and verified. The older statement that litter has no history page means no separate litter-only screen: the shared Events tab includes litter history, as implemented in Stage 2.
 
 Step 6 must include Health records, preserve existing local history, prevent duplicate initial seed data across devices, refresh the feature store after imported changes, and reconcile reminder completion/history without duplicate logged events. Schema compatibility and iCloud setup are Step 6 work, not proof that sync can be enabled immediately. All current notification settings remain device-local.
 
@@ -368,3 +368,5 @@ Home Quick Add ends with Health; its editor requires choosing a pet. Recent merg
 Detailed approved behavior and acceptance checks are in [health-design-options.md](health-design-options.md).
 
 Stages 5.7–5.8 were verified in sequence: 5.7 passed 48 unit tests and its focused edit/relaunch/cancel UI test before 5.8 began. Final 5.8 verification passed the app/test build, 61 unit tests, and the full 13-test UI suite. Stage 5.9 passed the app/test build, 68 unit tests, and all 14 UI tests. See `plan.md` for logs and coverage.
+
+Stage 5.10 completed the approved local gaps before CloudKit: pet name/calorie-goal add/edit with stable IDs; reminder creation/editing with recurrence/end dates, stored per-target payloads, and preserved completed history; Events +; confirmed event deletion; and inline saved-option creation/selection. Final build, 83 unit tests, and all 21 UI tests passed. No unanswered product decisions remain for the approved pre-sync scope.

@@ -77,6 +77,15 @@ final class PetCareStore: ObservableObject {
         }
     }
 
+    func savePetAndRefresh(_ pet: Pet) {
+        if let petRepository {
+            petRepository.savePet(pet)
+            refreshFromPersistence()
+        } else {
+            savePet(pet)
+        }
+    }
+
     func healthEntries(for petID: UUID) -> [HealthEntry] {
         healthEntries.filter { $0.petID == petID }.sorted { $0.happenedAt > $1.happenedAt }
     }
@@ -224,6 +233,15 @@ final class PetCareStore: ObservableObject {
             accepted.forEach(eventRepository.saveEvent)
         } else {
             accepted.forEach(saveEvent)
+        }
+    }
+
+    func deleteCareEventAndRefresh(id: UUID) {
+        if let eventRepository {
+            eventRepository.deleteEvent(id: id)
+            refreshFromPersistence()
+        } else {
+            deleteEvent(id: id)
         }
     }
 

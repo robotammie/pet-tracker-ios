@@ -5,6 +5,8 @@ struct EventListView: View {
     @State private var selectedType = CareEventType.food
     @State private var petFilter = EventPetFilter.all
     @State private var editingEvent: CareEvent?
+    @State private var creationRoute: EventCreationRoute?
+    @State private var deletingEvent: CareEvent?
 
     init(initialSelectedType: CareEventType = .food) {
         _selectedType = State(initialValue: initialSelectedType)
@@ -54,6 +56,10 @@ struct EventListView: View {
                         }
                         .foregroundStyle(.primary)
                         .accessibilityIdentifier("events.edit.\(event.id.uuidString)")
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button("Delete", role: .destructive) { deletingEvent = event }
+                                .accessibilityIdentifier("events.delete")
+                        }
                     }
                 } header: {
                     Text(section.day.formatted(date: .abbreviated, time: .omitted))
@@ -61,6 +67,22 @@ struct EventListView: View {
             }
         }
         .navigationTitle("Events")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { creationRoute = .event(selectedType) } label: { Image(systemName: "plus") }
+                    .accessibilityLabel("Add \(selectedType.rawValue.lowercased()) event")
+                    .accessibilityIdentifier("events.add")
+            }
+        }
+        .sheet(item: $creationRoute) { route in EventCreationSheet(route: route) }
+        .alert("Delete event?", isPresented: Binding(
+            get: { deletingEvent != nil }, set: { if !$0 { deletingEvent = nil } }), presenting: deletingEvent) { event in
+            Button("Delete", role: .destructive) { store.deleteCareEventAndRefresh(id: event.id) }
+                .accessibilityIdentifier("events.confirmDelete")
+            Button("Cancel", role: .cancel) { }.accessibilityIdentifier("events.cancelDelete")
+        } message: { _ in
+            Text("This permanently removes the logged event. Reminder completion history stays as recorded.")
+        }
         .sheet(item: $editingEvent) { event in
             CareEventEditorView(event: event)
                 .environmentObject(store)

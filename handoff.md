@@ -5,13 +5,13 @@ Use this file to resume the project in a fresh Codex chat/session.
 ## Resume Prompt
 
 ```text
-We are continuing an iOS SwiftUI app in this repo. Please read README.md, design.md, plan.md, and handoff.md, then inspect git status before making changes. Stages 5.5–5.9 are committed; preserve the completed work. Stages 5.7–5.8 were authorized with testing between stages; both are complete and verified. Read plan.md for results. Stage 5.9 is complete and verified (option A, four categories, Health Quick Add/Recent, lb default); final build, 68 unit tests, and all 14 UI tests passed; read plan.md for results; do not start CloudKit yet.
+We are continuing an iOS SwiftUI app in this repo. Please read README.md, design.md, plan.md, and handoff.md, then inspect git status before making changes. Stages 5.5–5.9 are committed; preserve the completed work. Stages 5.7–5.8 were authorized with testing between stages; both are complete and verified. Read plan.md for results. Stage 5.9 is complete and verified (option A, four categories, Health Quick Add/Recent, lb default); final build, 68 unit tests, and all 14 UI tests passed; read plan.md for results. Stage 5.10 is complete and committed: final build, 83 unit tests, and all 21 UI tests passed. Read its implementation notes in plan.md; do not start Stage 6 until requested.
 ```
 
 ## Project Snapshot
 
 - App: native iOS SwiftUI pet care tracker.
-- Current milestone: Stages 0 through 5.9 are complete and verified. Changes are committed as requested.
+- Current milestone: Stages 0 through 5.10 are complete and verified. Changes are committed as requested.
 - Persistence: SwiftData for app data, UserDefaults for device-local notification settings.
 - Sync: CloudKit is planned for Stage 6, after local polish.
 - Scope: cats/pets, food events, medicine events, litter events, health history, reminders, saved food/medicine options, local notifications, focused settings.
@@ -26,7 +26,7 @@ We are continuing an iOS SwiftUI app in this repo. Please read README.md, design
 - Multi-pet food and medicine creation.
 - Saved food and medicine option management.
 - Medicine reminder autoqueue, recurrence logic, completion, ignore-until, mute, delete, and completed history.
-- General reminder creation/editing and pet editing screens are not yet implemented; pets come from seed data.
+- Stage 5.10 adds verified pet name/calorie-goal editing, general reminder creation/editing, Events +/confirmed deletion, and inline food/medication option creation.
 - Reminder-to-event completion that can log care events.
 - Local notification scheduling with global and per-event-type presentation settings.
 - Badge count support for overdue active reminders.
@@ -129,7 +129,7 @@ The user authorized 5.7 past-event editing and 5.8 same-medication/same-cat dose
 
 ## Next Suggested Move
 
-Stage 5.9 is complete: build, 68 unit tests, and all 14 UI tests passed. Review the local changes and resume Stage 6 when requested. The user approved Health inside pet detail, weight/visits/procedures/general notes, Health last in Quick Add and included in Recent, and lb as the default weight unit. Do not enable CloudKit until the agreed pre-sync changes are settled. Changes are committed as requested.
+Stage 5.9 is complete and committed. Stage 5.10 is complete and committed: final build, 83 unit tests, and all 21 UI tests passed. Stage 6 can begin when requested. The user approved Health inside pet detail, weight/visits/procedures/general notes, Health last in Quick Add and included in Recent, and lb as the default weight unit. Do not enable CloudKit until the agreed pre-sync changes are settled. Changes are committed as requested.
 
 
 ## Stage 5.7–5.8 implementation notes
@@ -160,6 +160,12 @@ Stage 5.9 is complete: build, 68 unit tests, and all 14 UI tests passed. Review 
 
 The user requested litter icons use SF Symbol `tray` throughout Home/Recent, reminders, litter creation, saved options, and Settings. This icon-only update follows the passing Stage 5.9 build, 68 unit tests, and 14 UI tests. Stages 5.5–5.9 and documentation are included in the requested commit.
 
-## Approved next milestone: Stage 5.10
+## Stage 5.10 completion notes
 
-The user reviewed the original-design gaps one by one and approved minimal pet add/edit, general reminder creation/editing, Events + creation, confirmed care-event swipe deletion, and inline Add new food/medication with automatic selection. Complete and verify these before Stage 6. Pet deletion and the broader saved-option save/update checkbox behavior are deferred. See plan.md for scope and acceptance checks. This is an approved plan; implementation has not started.
+The user reviewed the original-design gaps one by one and approved minimal pet add/edit, general reminder creation/editing, Events + creation, confirmed care-event swipe deletion, and inline Add new food/medication with automatic selection. Complete and verify these before Stage 6. Pet deletion and the broader saved-option save/update checkbox behavior are deferred. See plan.md for scope and acceptance checks. Implementation is complete and verified: final build, 83 unit tests, and all 21 UI tests passed. Logs and result bundles are in plan.md. The requested implementation commit includes these documentation updates.
+
+
+- Pet editor preserves IDs; detail reads the current stored pet so edited names/goals update immediately. Name is required and the optional goal must be a positive integer.
+- ReminderEditDraft/ReminderEditorView support interval and editable times-per-day schedules, end dates, pure/event-linked modes, and household/per-pet payloads. Partially completed occurrences retain completed targets and lock scope/mode/type; only active definitions can be edited. Stale drafts ask to reopen rather than overwriting changed state. Clearing an option restores recorded details while editing or requires choosing a payload for a new reminder.
+- Events + reuses EventCreationSheet; confirmed deletion refreshes the store without changing reminder history. Inline saved-option creation uses its own cancelable sheet and selects the saved result. New medication selection applies its default dose/unit; new food preserves entered amounts and uses the selected unit/rate. Full-row Add new touch targets prevent missed taps.
+- Private seed data and the separate personal simulator remain outside UI-test workflows. CloudKit remains unstarted.
