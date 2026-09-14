@@ -131,6 +131,10 @@ The user authorized 5.7 past-event editing and 5.8 same-medication/same-cat dose
 
 Stage 5.9 is complete and committed. Stage 5.10 is complete and committed: final build, 83 unit tests, and all 21 UI tests passed. Stage 6 can begin when requested. The user approved Health inside pet detail, weight/visits/procedures/general notes, Health last in Quick Add and included in Recent, and lb as the default weight unit. Do not enable CloudKit until the agreed pre-sync changes are settled. Changes are committed as requested.
 
+Sync preparation update (2026-09-13): the user has no Apple developer account yet and will arrange it separately. Focus Stage 6 on correct code, data-preserving migration, offline behavior, and local tests; keep entitlement/container provisioning and live two-context verification explicitly pending until access is available. Future multi-user/household sharing remains a goal: assess the SwiftData-first choice against a future sharing path and isolate account/database ownership behind repository/sync boundaries. Do not implement sharing UI or permissions in Stage 6. See plan.md for execution constraints.
+
+Simulator cleanup: removed obsolete PetTracker installations from iPhone 17 Pro/Pro Max after backing up their app bundles and data to `/tmp/pettracker-obsolete-installations-20260913`. Both simulators were returned to shutdown. iPhone 17 retains the latest app; two normal launches succeeded. Reported launch crashes were the separate UI-test runner missing `lib_TestingInterop.dylib` when manually opened. Removed that runner; `scripts/test-ui.sh` now removes it after test success/failure and resolves cleanup from the actual destination. Mocked success/failure checks, shell syntax, and diff checks passed. Direct Xcode UI-test runs may still leave a runner installed.
+
 
 ## Stage 5.7–5.8 implementation notes
 

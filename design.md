@@ -91,6 +91,8 @@ The user approved completing all five gaps before sync as Stage 5.10: minimal pe
 
 Step 6 must include Health records, preserve existing local history, prevent duplicate initial seed data across devices, refresh the feature store after imported changes, and reconcile reminder completion/history without duplicate logged events. Schema compatibility and iCloud setup are Step 6 work, not proof that sync can be enabled immediately. All current notification settings remain device-local.
 
+Sync execution update (2026-09-13): Apple developer account setup is pending; proceed with code preparation and local verification while leaving live CloudKit provisioning/verification pending. Future multi-user/household sharing remains a product goal. Keep stable domain identities and isolate account/database ownership and sharing concerns behind repository/sync boundaries; assess the integration choice for a future sharing path before committing to single-user assumptions. Sharing UI, invitations, and permissions remain future work. Data stays local and/or in users' iCloud, without app server-side state.
+
 ## Data
 ### pet
 name: str

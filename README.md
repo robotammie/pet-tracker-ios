@@ -154,7 +154,9 @@ scripts/test-ui.sh
 
 This builds and runs only `PetTrackerAppUITests`. It covers launch, food/medicine/litter logging, event editing and pet filtering, health Quick Add/Recent/history/edit/pet isolation, reminder completion, medication warnings/overrides, saved timing configuration, settings persistence, and the debug reset confirmation. Debug UI testing uses a separate SwiftData store and UserDefaults suite with public seed fixtures; each test resets that test data, while relaunch checks retain it. It never uses your private seed data or schedules notifications.
 
-All scripts accept `DERIVED_DATA_PATH`; test scripts also accept `SIMULATOR_NAME` (default `iPhone 17`) and `DESTINATION`. When choosing a destination explicitly, set `SIMULATOR_NAME` to its device too. `test-without-building.sh` reruns unit tests only and requires a successful build after the latest source edits.
+The UI-test script removes its test-runner installation after success or failure, leaving PetTracker and its data intact. Open `PetTrackerApp` for normal use; the test runner is not a standalone app and can crash when launched manually. UI tests invoked directly from Xcode may leave that runner installed.
+
+All scripts accept `DERIVED_DATA_PATH`; test scripts also accept `SIMULATOR_NAME` (default `iPhone 17`) and `DESTINATION`. The UI-test script resolves its boot and cleanup device from `DESTINATION`; specify a simulator ID if its name is ambiguous. For other test scripts, set `SIMULATOR_NAME` to the explicit destination device too. `test-without-building.sh` reruns unit tests only and requires a successful build after the latest source edits.
 
 For simulator or real-device reseeding, run a Debug build, then open Settings > Development > Reset and Reseed Local Data and confirm Reset and Reseed. This preserves notification preferences and reschedules active seeded reminders. Editing the seed file does not alter existing data until you reseed. If an incompatible schema prevents launch, delete the app from that simulator/device and reinstall; this also removes device-local settings. Release builds do not expose reset/reseed.
 

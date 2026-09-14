@@ -712,6 +712,11 @@ Verification on 2026-09-13:
 ## Stage 6: iCloud/CloudKit Sync
 Goal: connect persistence to iCloud once local behavior is stable.
 
+Execution constraints (user update 2026-09-13):
+- The user does not yet have an Apple developer account. Prioritize code correctness, schema/migration preparation, offline behavior, and local automated verification while account setup is pending. Do not require account setup before making progress on those tasks.
+- Separate code-readiness completion from account-dependent entitlement/container setup and live sync verification. Keep local builds usable; mark live CloudKit checks pending until signing/container access and test contexts are available, rather than claiming they passed.
+- Future multi-user/household sharing remains a goal. Review sync architecture against that goal before choosing the final integration approach: preserve stable IDs, keep account/database/record ownership and sharing concerns behind repository/sync boundaries, and avoid making the UI or domain logic depend on a single user's private database. Evaluate whether the proposed SwiftData-first approach leaves a workable sharing path; retain an explicit CloudKit option if needed. Sharing UI, invitations, and permissions are future scope, not Stage 6 implementation requirements.
+
 Tasks:
 - Enable iCloud/CloudKit entitlements.
 - Try SwiftData CloudKit integration first.
