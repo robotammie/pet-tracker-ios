@@ -185,7 +185,11 @@ final class MedicationTimingServiceTests: XCTestCase {
 
     func testTimingAndOverridePersistenceRoundTrip() throws {
         let schema = Schema([PetRecord.self, CareEventRecord.self, SavedEventOptionRecord.self, ReminderRecord.self, ReminderTargetRecord.self])
-        let container = try ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)])
+        let container = try ModelContainer(
+            for: schema,
+            configurations: [
+                ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+            ])
         let context = ModelContext(container)
         let medicines = SwiftDataSavedEventOptionRepository(context: context)
         let events = SwiftDataCareEventRepository(context: context)

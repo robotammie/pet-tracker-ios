@@ -1,3 +1,4 @@
+import CloudKit
 import SwiftData
 import SwiftUI
 
@@ -47,6 +48,9 @@ struct PersistentRootView: View {
             .onChange(of: store.settings) { _, settings in
                 settingsRepository.saveSettings(settings)
                 store.syncLocalNotifications()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .CKAccountChanged)) { _ in
+                syncCoordinator?.requestSync()
             }
     }
 

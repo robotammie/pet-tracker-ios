@@ -1,6 +1,6 @@
 # Stage 6 sync design
 
-Code preparation is implemented; live CloudKit provisioning and verification remain pending the user's Apple developer account. Normal builds stay local-only. The optional CloudKit configuration is not attached to any project build configuration.
+Stage 6 is implemented and verified against the CloudKit Development environment. The app target is signed by team `UXV29Z3R2F`, uses `iCloud.com.tammie.PetTrackerApp`, and enables explicit CloudKit sync in Debug builds. Release builds remain local-only until the Development schema is deliberately deployed to Production.
 
 ## Integration choice
 
@@ -34,18 +34,17 @@ Imports validate the version, identity, payload, and resulting local snapshot. U
 
 The transport pages full-zone changes from a nil token, retaining record system fields in memory for optimistic `.ifServerRecordUnchanged` saves. Per-record conflicts return server envelopes for reconciliation and bounded retries. This initial personal-use implementation avoids persistent-token correctness dependencies; incremental fetch and asset-backed large payloads are future optimizations. Payloads over the conservative 800 KB guard remain local with an explanatory sync status; they are not truncated.
 
-Sync runs on foreground entry, local writes, manual Sync Now, and every minute while active. Imported data refreshes the feature store and local notification schedule without relaunch. Silent/background push delivery is not implemented in this milestone. Signed-out/network failures keep changes local for retry. Unexpected server hard deletions or loss of an established zone pause sync; normal app deletions use durable tombstone records. Automatic destructive CloudKit reset/reseed is not available.
+Sync runs on foreground entry, local writes, manual Sync Now, every minute while active, and after iOS posts `CKAccountChanged`. Imported data refreshes the feature store and local notification schedule without relaunch. Silent/background push delivery is not implemented in this milestone. Signed-out/network failures keep changes local for retry. Unexpected server hard deletions or loss of an established zone pause sync; normal app deletions use durable tombstone records. Automatic destructive CloudKit reset/reseed is not available.
 
 Local fetch/save errors are thrown and surfaced with retry. Fetches publish only after all repositories succeed. Unreadable records still count as existing data for initialization, preventing accidental reseeding. Startup container failures show a retry screen rather than terminate the app. Diagnostics log operation/error domain/code without private titles or notes.
 
-## Activation after account setup
+## Provisioning and release activation
 
-1. Confirm the signing team and register/select the actual iCloud container.
-2. Use `Configuration/CloudKit.xcconfig.example` and its entitlement template as opt-in configuration. Replace `iCloud.YOUR_CONTAINER`, select Development/Production consistently, and verify the signed entitlements match the Info.plist container/environment. Do not attach this configuration to ordinary local builds prematurely.
-3. Verify the development CloudKit schema for `PetTrackerEntityV1.envelope` and prepare production schema deployment when release work begins. Each environment gets a new journal for the existing local dataset; review that target account/dataset before first activation.
-4. Back up populated local data and verify the upgrade on a copy; never reset personal history to make setup succeed.
-5. Verify two same-account contexts: initial populated upload, empty second-context download without duplicate seeds, edits/deletes/Health/partial targets, concurrent completions, notification refresh, offline/reconnect, and signed-out/account-change behavior.
+1. The signing team, app identifier, iCloud entitlement, Development environment, and `iCloud.com.tammie.PetTrackerApp` container are configured in the project. `Configuration/CloudKit.xcconfig.example` remains a reusable template for another app/container.
+2. The Development schema contains `PetTrackerEntityV1.envelope`. Deploy that schema to Production only during release preparation, then enable `PETTRACKER_CLOUDKIT` for Release. Each environment gets a separate journal for the existing local dataset; review the target account and dataset before first activation.
+3. Back up populated local data before provisioning changes; never reset personal history to make setup succeed.
+4. Run `DEVICE_ID=<physical-device-UDID> scripts/test-cloudkit-live.sh` to verify the isolated live contract. The test creates a uniquely named private Development zone, exercises two independent local contexts, and removes the zone afterward.
 
 UI-test arguments and injected XCTest hosts use isolated local stores/defaults and cannot enable sync, including in CloudKit-flagged builds. UI tests use `UITests.store`; unit-test app hosts use `UnitTestHost.store`. Debug reset/reseed is disabled in a cloud-configured normal app. The full UI script removes its test runner afterward.
 
-Local/model/mock checks are evidence of code readiness, not evidence that live CloudKit works. Stage 6 remains pending its account-dependent checks until those run successfully.
+Live verification on 2026-09-15 passed on the connected iPhone against the real Development container: an empty second local context downloaded all synced categories, offline edits uploaded after reconnect, and concurrent partial reminder completions converged without duplicate logical results. The app's populated phone dataset also produced real record saves in the Development container. The iPhone 17 simulator's iCloud protected-key state remained `waitfortrust`/`PCSNoPublicIdentity`; its local app data was replaced with a verified copy of the phone data, but that simulator is not evidence of CloudKit transport. This account-specific simulator limitation does not affect the isolated physical-device CloudKit result.

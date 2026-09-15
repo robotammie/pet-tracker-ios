@@ -1,7 +1,4 @@
-// Opt-in template. Not attached to Debug/Release; configure only after account/container setup.
+// Reference template for another app/container. PetTrackerApp now has an actual Xcode-managed entitlement.
 PETTRACKER_CLOUDKIT_CONTAINER = iCloud.YOUR_CONTAINER
-PETTRACKER_CLOUDKIT_ENVIRONMENT = Development
-INFOPLIST_KEY_PetTrackerCloudKitEnvironment = $(PETTRACKER_CLOUDKIT_ENVIRONMENT)
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) PETTRACKER_CLOUDKIT
-INFOPLIST_KEY_PetTrackerCloudKitContainer = $(PETTRACKER_CLOUDKIT_CONTAINER)
 CODE_SIGN_ENTITLEMENTS = Configuration/CloudKit.entitlements.example

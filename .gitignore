@@ -2,6 +2,8 @@
 
 # Xcode
 DerivedData/
+DerivedDataDevice/
+DerivedDataCloudKitLive/
 *.xcuserstate
 xcuserdata/
 *.moved-aside

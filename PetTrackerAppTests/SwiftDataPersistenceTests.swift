@@ -221,7 +221,10 @@ final class SwiftDataPersistenceTests: XCTestCase {
             let legacySchema = Schema([PetRecord.self, HealthEntryRecord.self, CareEventRecord.self,
                 SavedEventOptionRecord.self, ReminderRecord.self, ReminderTargetRecord.self])
             let container = try ModelContainer(for: legacySchema, configurations: [
-                ModelConfiguration(schema: legacySchema, url: original.appendingPathComponent("default.store"))])
+                ModelConfiguration(
+                    schema: legacySchema,
+                    url: original.appendingPathComponent("default.store"),
+                    cloudKitDatabase: .none)])
             let context = ModelContext(container)
             try SwiftDataPetRepository(context: context).savePet(pet)
             try SwiftDataCareEventRepository(context: context).saveEvent(event)
@@ -274,7 +277,8 @@ final class SwiftDataPersistenceTests: XCTestCase {
             ReminderRecord.self,
             ReminderTargetRecord.self
         ])
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let configuration = ModelConfiguration(
+            schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         let container = try ModelContainer(for: schema, configurations: [configuration])
 
         return ModelContext(container)

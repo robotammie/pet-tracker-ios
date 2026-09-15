@@ -534,3 +534,210 @@ private final class MemorySyncTransport: SyncTransport {
         return reply
     }
 }
+
+#if LIVE_CLOUDKIT_TESTS
+    @MainActor
+    final class CloudKitLiveIntegrationTests: XCTestCase {
+        private static let containerIdentifier = "iCloud.com.tammie.PetTrackerApp"
+        private let time = Date(timeIntervalSince1970: 1_800_000_000)
+
+        func testIsolatedZoneConvergesTwoLocalContextsAcrossOfflineAndConcurrentChanges() async throws {
+            let containerIdentifier = Self.containerIdentifier
+            let container = CKContainer(identifier: containerIdentifier)
+            let zoneName = "PetTrackerLiveTest-" + UUID().uuidString
+            var scope = SyncScope.personal
+            scope.containerIdentifier = containerIdentifier
+            scope.environment = .development
+            scope.zoneName = zoneName
+            let zoneID = CKRecordZone.ID(zoneName: zoneName, ownerName: CKCurrentUserDefaultName)
+            addTeardownBlock {
+                let database = CKContainer(identifier: containerIdentifier).privateCloudDatabase
+                _ = try? await database.deleteRecordZone(withID: zoneID)
+            }
+
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent(zoneName)
+            addTeardownBlock { try? FileManager.default.removeItem(at: root) }
+            let firstContext = try context()
+            let secondContext = try context()
+            let firstJournal = try journal(context: firstContext, url: root.appendingPathComponent("first.json"), scope: scope)
+            let secondJournal = try journal(
+                context: secondContext, url: root.appendingPathComponent("second.json"), scope: scope)
+
+            let firstPet = Pet(name: "Live test pet A")
+            let secondPet = Pet(name: "Live test pet B")
+            let option = SavedEventOption(
+                eventType: .medicine,
+                data: .medicine(
+                    SavedMedicineData(
+                        name: "Live test medicine", dosage: 1, unit: "tablet",
+                        doseInterval: .init(minimumHours: 8, maximumHours: 12))))
+            let initialEvent = CareEvent(
+                type: .food, petID: firstPet.id, startTime: time.addingTimeInterval(-3_600),
+                data: .food(
+                    FoodEventData(
+                        name: "Live test food", foodType: .wet, amount: 1, unit: .can,
+                        calories: 90, caloriesPerUnit: 90)))
+            let initialHealth = HealthEntry(
+                petID: secondPet.id, happenedAt: time.addingTimeInterval(-1_800), title: "Live test weight",
+                data: .weight(.init(value: 10, unit: .pound)))
+            let dose = CareEventData.medicine(
+                MedicineEventData(
+                    name: "Live test medicine", dosage: 1, unit: "tablet",
+                    savedOptionID: option.id, doseInterval: .init(minimumHours: 8, maximumHours: 12)))
+            let reminder = Reminder(
+                title: "Live test reminder", mode: .reminderToEvent, eventType: .medicine,
+                dueAt: time, dueStyle: .timestamp,
+                schedule: .init(recurrenceRule: .every(value: 8, unit: .hour), endDate: nil),
+                targets: [
+                    ReminderTarget(petID: firstPet.id, eventData: dose),
+                    ReminderTarget(petID: secondPet.id, eventData: dose),
+                ])
+
+            try firstJournal.transaction(context: firstContext) {
+                let pets = SwiftDataPetRepository(context: firstContext, savesImmediately: false)
+                try pets.savePet(firstPet)
+                try pets.savePet(secondPet)
+                try SwiftDataCareEventRepository(context: firstContext, savesImmediately: false)
+                    .saveEvent(initialEvent)
+                try SwiftDataHealthEntryRepository(context: firstContext, savesImmediately: false)
+                    .saveHealthEntry(initialHealth)
+                try SwiftDataSavedEventOptionRepository(context: firstContext, savesImmediately: false)
+                    .saveSavedOption(option)
+                try SwiftDataReminderRepository(context: firstContext, savesImmediately: false)
+                    .saveReminder(reminder)
+            }
+
+            let firstStore = configuredStore(context: firstContext, journal: firstJournal)
+            let secondStore = configuredStore(context: secondContext, journal: secondJournal)
+            let firstCoordinator = SyncCoordinator(
+                journal: firstJournal,
+                transport: CloudKitTransport(
+                    containerIdentifier: containerIdentifier, environment: .development),
+                context: firstContext, store: firstStore)
+            let secondLiveTransport = CloudKitTransport(
+                containerIdentifier: containerIdentifier, environment: .development)
+            let secondCoordinator = SyncCoordinator(
+                journal: secondJournal, transport: secondLiveTransport,
+                context: secondContext, store: secondStore)
+
+            await firstCoordinator.syncNow()
+            XCTAssertEqual(firstStore.syncStatus, "Up to date with iCloud")
+            await secondCoordinator.syncNow()
+            XCTAssertEqual(
+                try SyncJournal.snapshot(context: firstContext),
+                try SyncJournal.snapshot(context: secondContext))
+
+            let offlineHealth = HealthEntry(
+                petID: firstPet.id, happenedAt: time, title: "Live test note", data: .generalNote)
+            try secondJournal.transaction(context: secondContext) {
+                try SwiftDataHealthEntryRepository(context: secondContext, savesImmediately: false)
+                    .saveHealthEntry(offlineHealth)
+            }
+            let gatedTransport = GatedLiveSyncTransport(
+                base: CloudKitTransport(
+                    containerIdentifier: containerIdentifier, environment: .development))
+            let reconnectingCoordinator = SyncCoordinator(
+                journal: secondJournal, transport: gatedTransport,
+                context: secondContext, store: secondStore)
+            await reconnectingCoordinator.syncNow()
+            XCTAssertFalse(try secondJournal.pending(context: secondContext).isEmpty)
+            XCTAssertTrue(secondStore.syncStatus.contains("unavailable"))
+            gatedTransport.isAvailable = true
+            await reconnectingCoordinator.syncNow()
+            await firstCoordinator.syncNow()
+            XCTAssertEqual(
+                try SyncJournal.snapshot(context: firstContext),
+                try SyncJournal.snapshot(context: secondContext))
+
+            try complete(
+                reminder, pets: [firstPet.id], at: time,
+                context: firstContext, journal: firstJournal)
+            try complete(
+                reminder, pets: [secondPet.id], at: time.addingTimeInterval(30),
+                context: secondContext, journal: secondJournal)
+            await firstCoordinator.syncNow()
+            await secondCoordinator.syncNow()
+            await firstCoordinator.syncNow()
+            await secondCoordinator.syncNow()
+
+            XCTAssertEqual(
+                try SyncJournal.snapshot(context: firstContext),
+                try SyncJournal.snapshot(context: secondContext))
+            let finalEvents = try SwiftDataCareEventRepository(context: firstContext).listEvents()
+            XCTAssertEqual(finalEvents.count, 3)
+            let finalReminders = try SwiftDataReminderRepository(context: firstContext)
+                .listReminders(includeMuted: true)
+            XCTAssertEqual(finalReminders.filter(\.isActive).count, 1)
+            XCTAssertEqual(finalReminders.filter { $0.status == .completed }.count, 1)
+            XCTAssertTrue(try firstJournal.pending(context: firstContext).isEmpty)
+            XCTAssertTrue(try secondJournal.pending(context: secondContext).isEmpty)
+            try await container.privateCloudDatabase.deleteRecordZone(withID: zoneID)
+        }
+
+        private func context() throws -> ModelContext {
+            let context = ModelContext(try LocalPersistence.makeContainer(inMemory: true))
+            context.autosaveEnabled = false
+            return context
+        }
+
+        private func journal(context: ModelContext, url: URL, scope: SyncScope) throws -> SyncJournal {
+            try SyncJournal(url: url, initial: SyncJournal.snapshot(context: context), scope: scope)
+        }
+
+        private func configuredStore(context: ModelContext, journal: SyncJournal) -> PetCareStore {
+            let store = PetCareStore(notificationScheduler: SyncSilentScheduler())
+            store.configurePersistence(
+                petRepository: SwiftDataPetRepository(context: context, savesImmediately: false),
+                eventRepository: SwiftDataCareEventRepository(context: context, savesImmediately: false),
+                savedOptionRepository: SwiftDataSavedEventOptionRepository(
+                    context: context, savesImmediately: false),
+                reminderRepository: SwiftDataReminderRepository(context: context, savesImmediately: false),
+                healthRepository: SwiftDataHealthEntryRepository(context: context, savesImmediately: false),
+                performTransaction: { try journal.transaction(context: context, action: $0) })
+            store.onReminderCompleted = { journal.stageCompletion($0, pets: $1, at: $2, events: $3) }
+            XCTAssertTrue(store.refreshFromPersistence())
+            return store
+        }
+
+        private func complete(
+            _ reminder: Reminder, pets: Set<UUID>, at date: Date,
+            context: ModelContext, journal: SyncJournal
+        ) throws {
+            let result = ReminderActionService.complete(
+                reminder, completedPetIDs: pets, completionTime: date, createsEvent: true)
+            try journal.transaction(context: context) {
+                let events = SwiftDataCareEventRepository(context: context, savesImmediately: false)
+                try result.events.forEach(events.saveEvent)
+                let reminders = SwiftDataReminderRepository(context: context, savesImmediately: false)
+                try reminders.saveReminder(result.updatedReminder)
+                if let history = result.historyReminder { try reminders.saveReminder(history) }
+                journal.stageCompletion(reminder, pets: pets, at: date, events: result.events)
+            }
+        }
+    }
+
+    @MainActor
+    private final class GatedLiveSyncTransport: SyncTransport {
+        var isAvailable = false
+        private let base: CloudKitTransport
+
+        init(base: CloudKitTransport) { self.base = base }
+
+        func accountIdentity() async throws -> String {
+            guard isAvailable else { throw SyncError.unavailable }
+            return try await base.accountIdentity()
+        }
+
+        func prepare(scope: SyncScope, mayCreateZone: Bool) async throws {
+            try await base.prepare(scope: scope, mayCreateZone: mayCreateZone)
+        }
+
+        func fetch(scope: SyncScope) async throws -> [SyncEnvelope] {
+            try await base.fetch(scope: scope)
+        }
+
+        func send(_ changes: [SyncEnvelope], scope: SyncScope) async throws -> SyncSendResult {
+            try await base.send(changes, scope: scope)
+        }
+    }
+#endif

@@ -1,5 +1,6 @@
 import CloudKit
 import Foundation
+import OSLog
 import SwiftData
 
 struct SyncSendResult {
@@ -40,8 +41,39 @@ final class CloudKitTransport: SyncTransport {
     }
 
     func accountIdentity() async throws -> String {
-        guard try await container.accountStatus() == .available else { throw SyncError.unavailable }
-        return try await container.userRecordID().recordName
+        let status: CKAccountStatus
+        do {
+            status = try await container.accountStatus()
+        } catch {
+            let error = error as NSError
+            Logger(subsystem: "com.tammie.PetTrackerApp", category: "CloudKit")
+                .error("Account lookup failed: \(error.domain, privacy: .public) code \(error.code)")
+            throw error
+        }
+        guard status == .available else {
+            Logger(subsystem: "com.tammie.PetTrackerApp", category: "CloudKit")
+                .error("iCloud account unavailable: \(Self.name(for: status), privacy: .public)")
+            throw SyncError.unavailable
+        }
+        do {
+            return try await container.userRecordID().recordName
+        } catch {
+            let error = error as NSError
+            Logger(subsystem: "com.tammie.PetTrackerApp", category: "CloudKit")
+                .error("Account identity failed: \(error.domain, privacy: .public) code \(error.code)")
+            throw error
+        }
+    }
+
+    private static func name(for status: CKAccountStatus) -> String {
+        switch status {
+        case .available: "available"
+        case .couldNotDetermine: "couldNotDetermine"
+        case .noAccount: "noAccount"
+        case .restricted: "restricted"
+        case .temporarilyUnavailable: "temporarilyUnavailable"
+        @unknown default: "unknown"
+        }
     }
 
     func prepare(scope: SyncScope, mayCreateZone: Bool) async throws {
@@ -134,19 +166,22 @@ final class CloudKitTransport: SyncTransport {
 
 enum SyncBuildConfiguration {
     static var environment: SyncScope.Environment? {
-        guard let value = Bundle.main.object(forInfoDictionaryKey: "PetTrackerCloudKitEnvironment") as? String
-        else { return nil }
-        return SyncScope.Environment(rawValue: value)
+        #if PETTRACKER_CLOUDKIT
+            #if DEBUG
+                return .development
+            #else
+                return .production
+            #endif
+        #else
+            return nil
+        #endif
     }
     static var containerIdentifier: String? {
         #if PETTRACKER_CLOUDKIT
             guard environment != nil, !UITestConfiguration.isEnabled, NSClassFromString("XCTestCase") == nil,
-                ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil,
-                let value = Bundle.main.object(forInfoDictionaryKey: "PetTrackerCloudKitContainer")
-                    as? String,
-                value.hasPrefix("iCloud."), !value.contains("YOUR")
+                ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
             else { return nil }
-            return value
+            return "iCloud.com.tammie.PetTrackerApp"
         #else
             return nil
         #endif

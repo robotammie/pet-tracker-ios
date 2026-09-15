@@ -59,7 +59,8 @@ final class CareEventEditDraftTests: XCTestCase {
 
     func testEditUpsertsPersistsAndRefreshesCalorieDayTotals() throws {
         let container = try ModelContainer(for: PetRecord.self, CareEventRecord.self, SavedEventOptionRecord.self,
-            ReminderRecord.self, ReminderTargetRecord.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+            ReminderRecord.self, ReminderTargetRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
         let context = ModelContext(container)
         let pets = SwiftDataPetRepository(context: context)
         let events = SwiftDataCareEventRepository(context: context)

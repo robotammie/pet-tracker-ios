@@ -711,17 +711,17 @@ Verification on 2026-09-13:
 
 ## Stage 6: iCloud/CloudKit Sync
 
-Status: code preparation complete and locally verified. Account-dependent provisioning and live verification remain pending; Stage 6 overall is not yet complete.
+Status: complete. Implementation, Development provisioning, physical-device live CloudKit validation, and final regressions passed on 2026-09-15.
 
 Goal: connect persistence to iCloud once local behavior is stable.
 
-Execution constraints (user update 2026-09-13):
-- The user does not yet have an Apple developer account. Prioritize code correctness, schema/migration preparation, offline behavior, and local automated verification while account setup is pending. Do not require account setup before making progress on those tasks.
-- Separate code-readiness completion from account-dependent entitlement/container setup and live sync verification. Keep local builds usable; mark live CloudKit checks pending until signing/container access and test contexts are available, rather than claiming they passed.
+Architecture constraints retained through completion:
+- Developer account setup is complete. Team `UXV29Z3R2F`, bundle `com.tammie.PetTrackerApp`, and container `iCloud.com.tammie.PetTrackerApp` are configured for Development.
+- Keep local behavior and test isolation usable independently of CloudKit. Signed Debug app builds enable Development sync; XCTest/UI hosts remain cloud-disabled; Release remains local-only until production schema deployment.
 - Future multi-user/household sharing remains a goal. Review sync architecture against that goal before choosing the final integration approach: preserve stable IDs, keep account/database/record ownership and sharing concerns behind repository/sync boundaries, and avoid making the UI or domain logic depend on a single user's private database. Evaluate whether the proposed SwiftData-first approach leaves a workable sharing path; retain an explicit CloudKit option if needed. Sharing UI, invitations, and permissions are future scope, not Stage 6 implementation requirements.
 
 Tasks:
-- Prepare opt-in iCloud/CloudKit entitlement/configuration templates; actual signing and container provisioning remain pending the developer account.
+- [x] Configure the signing team, iCloud/CloudKit entitlements, Development container, and reusable template.
 - Review SwiftData CloudKit integration first: completed; use the explicit fallback described in sync-design.md for deterministic reconciliation and future zone sharing.
 - Keep repository and sync transport boundaries strict.
 - Map local persistence models to CloudKit-compatible records or SwiftData CloudKit configuration.
@@ -750,7 +750,7 @@ The SwiftData-first review selected the planned explicit CloudKit fallback. See 
 - Concurrent reminder completion merges target outcomes into one logical event/history/next occurrence; repeated submissions, partial multi-pet completion, historical edits/deletions, scheduling calendars, newer definition edits, and stale sheets are covered by tests.
 - Implemented paginated full-zone CloudKit catch-up, optimistic writes/conflict retry, foreground/manual/local-write sync, and active minute polling. Imported changes refresh the store and local notifications. Background push, incremental fetch optimization, and sharing UI remain future scope.
 - Replaced swallowed fetch/save errors and fatal container startup with surfaced retry paths and atomic local transactions. Invalid/lossy imports roll back. Cloud-configured startup does not auto-seed; test hosts have separate stores/defaults and cannot enable CloudKit. Cloud-configured debug reset is unavailable.
-- Added opt-in configuration/entitlement templates without changing ordinary local builds. Actual signed entitlements, container schema, and live behavior have NOT been verified.
+- Configured signed Debug builds for the actual Development container and retained reusable template files. Release remains local-only until its schema is deployed.
 
 Local verification (2026-09-13):
 
@@ -759,9 +759,19 @@ Local verification (2026-09-13):
 - Final normal-build unit run: **111 tests, 0 failures**. Log `/tmp/pettracker-6-verified-unit.log`; result `DerivedData/Logs/Test/Test-PetTrackerApp-2026.09.13_18-46-34--0700.xcresult`.
 - Full UI regression: **22 tests, 0 failures**, including failed-startup retry preserving existing test history. Log `/tmp/pettracker-6-full-ui.log`; result `DerivedData/Logs/Test/Test-PetTrackerApp-2026.09.13_18-28-35--0700.xcresult`. Subsequent changes were sync validation/canonicalization and unit-host isolation, with the local UI behavior unchanged.
 - Latest normal app installed and launched successfully on iPhone 17; Home screenshot showed no startup failure. The UI runner was removed; only the current app bundle remains on that simulator. Other simulators/personal data were not reset for Stage 6.
-- These checks cover replica/model/mock transport behavior, not actual iCloud network operation. No account/container or signed entitlement verification was performed.
+- These checks establish the local/model baseline; live evidence is recorded below.
 
-Stage 6's live acceptance checks remain pending: provision signing/container/environment and validate a backed-up populated dataset against an empty second same-account context, including offline/reconnect and concurrent completions. Do not claim the full Stage 6 milestone complete until those pass.
+Stage 6 live acceptance checks are complete. Production schema deployment remains Stage 7 release work.
+
+Live verification and final regression (2026-09-15):
+
+- Xcode automatic signing produced an Apple Development profile with the expected app identifier and iCloud container entitlements. The Development schema contains `PetTrackerEntityV1.envelope`.
+- The signed app on the connected iPhone saved the populated personal dataset to the real Development container. Before direct simulator replacement, aggregate verification found 2 pets, 3 care events, 3 Health entries, 1 reminder, and 2 saved options on both phone and simulator.
+- `CloudKitLiveIntegrationTests` passed on physical iPhone in **7.288 seconds** against a uniquely named temporary private Development zone. Two independent local contexts verified all synced categories, empty-context download without seeds, offline edit/reconnect, and concurrent partial reminder completion with converged snapshots and no duplicate logical result. Result: `DerivedDataCloudKitLive/Logs/Test/Test-PetTrackerApp-2026.09.15_12-17-39--0700.xcresult`.
+- Final unit regression: **111 tests, 0 failures**. Result: `DerivedData/Logs/Test/Test-PetTrackerApp-2026.09.15_12-01-13--0700.xcresult`.
+- Final UI regression: **22 tests, 0 failures**, including the medication alert paths. Result: `DerivedData/Logs/Test/Test-PetTrackerApp-2026.09.15_12-01-51--0700.xcresult`.
+- The iPhone 17 simulator could not use CloudKit because its iCloud protected-key state reported `waitfortrust`/`PCSNoPublicIdentity`. Security settings were not weakened. Its app data was replaced directly with a verified copy of the phone data; that local copy is separate from live CloudKit evidence.
+- The app retries after `CKAccountChanged` as well as foreground entry, local writes, manual Sync Now, and active polling. Future household sharing remains isolated behind scope/database/zone boundaries; sharing UI and permissions remain future work.
 
 Mobile/sync concepts to explain while building:
 - CloudKit containers and entitlements.
