@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		ADBE082B3059EEE90078AAD3 /* PawIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = ADBE082A3059EEE90078AAD3 /* PawIcon.icon */; };
 		AA0000000000000000000001 /* PetTrackerAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000001 /* PetTrackerAppApp.swift */; };
 		AA0000000000000000000002 /* AppTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000002 /* AppTabView.swift */; };
 		AA0000000000000000000003 /* DomainModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000003 /* DomainModels.swift */; };
@@ -99,6 +100,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		ADBE082A3059EEE90078AAD3 /* PawIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = PawIcon.icon; sourceTree = "<group>"; };
 		ADBE08293059B72C0078AAD3 /* PetTrackerApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PetTrackerApp.entitlements; sourceTree = "<group>"; };
 		ADBE08293059B72C0078AAD4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BB0000000000000000000000 /* PetTrackerApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PetTrackerApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -183,6 +185,7 @@
 			children = (
 				ADBE08293059B72C0078AAD3 /* PetTrackerApp.entitlements */,
 				ADBE08293059B72C0078AAD4 /* Info.plist */,
+				ADBE082A3059EEE90078AAD3 /* PawIcon.icon */,
 				BB0000000000000000000001 /* PetTrackerAppApp.swift */,
 				BB0000000000000000000002 /* AppTabView.swift */,
 				BB0000000000000000000026 /* PersistentRootView.swift */,
@@ -430,6 +433,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ADBE082B3059EEE90078AAD3 /* PawIcon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -679,8 +683,7 @@
 		CC0000000000000000000012 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_APPICON_NAME = PawIcon;
 				CODE_SIGN_ENTITLEMENTS = PetTrackerApp/PetTrackerApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -706,8 +709,7 @@
 		CC0000000000000000000013 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_APPICON_NAME = PawIcon;
 				CODE_SIGN_ENTITLEMENTS = PetTrackerApp/PetTrackerApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
