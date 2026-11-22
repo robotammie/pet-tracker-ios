@@ -201,6 +201,7 @@ final class SwiftDataReminderRepository: ReminderRepository {
     }
 
     func saveReminder(_ reminder: Reminder) throws {
+        if reminder.eventActions != nil { try SyncPayload.reminder(reminder).validate() }
         let record = try records(ReminderRecord.self).first { $0.id == reminder.id } ?? ReminderRecord(
             title: reminder.title,
             modeRawValue: reminder.mode.rawValue,
@@ -281,6 +282,7 @@ final class SwiftDataScheduledEventRepository: ScheduledEventRepository {
     }
 
     func saveScheduledEvent(_ scheduledEvent: ScheduledEvent) throws {
+        try SyncPayload.schedule(scheduledEvent).validate()
         let records = try context.fetch(FetchDescriptor<ScheduledEventRecord>())
         let record = records.first { $0.id == scheduledEvent.id } ?? ScheduledEventRecord(
             title: scheduledEvent.title,
@@ -291,11 +293,11 @@ final class SwiftDataScheduledEventRepository: ScheduledEventRepository {
             calendarJSON: (try? String(
                 data: JSONEncoder().encode(scheduledEvent.calendar), encoding: .utf8
             )) ?? "{}",
-            foodName: scheduledEvent.food.name,
-            foodTypeRawValue: scheduledEvent.food.foodType.rawValue,
-            foodAmount: scheduledEvent.food.amount,
-            foodUnitRawValue: scheduledEvent.food.unit.rawValue,
-            foodCalories: scheduledEvent.food.calories
+            foodName: scheduledEvent.food?.name ?? "",
+            foodTypeRawValue: scheduledEvent.food?.foodType.rawValue ?? FoodType.dry.rawValue,
+            foodAmount: scheduledEvent.food?.amount ?? 0,
+            foodUnitRawValue: scheduledEvent.food?.unit.rawValue ?? FoodUnit.cup.rawValue,
+            foodCalories: scheduledEvent.food?.calories ?? 0
         )
         record.id = scheduledEvent.id
         SwiftDataMapper.update(record, with: scheduledEvent)

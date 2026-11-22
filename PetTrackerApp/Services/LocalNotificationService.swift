@@ -57,6 +57,15 @@ enum LocalNotificationService {
         }
     }
 
+    static func preferences(for reminder: Reminder, settings: UserSettings) -> NotificationPresentationPreferences {
+        guard let actions = reminder.eventActions else { return settings.notificationPreferences(for: reminder.eventType) }
+        let values = Set(actions.map(\.type)).map { settings.notificationPreferences(for: $0) }
+        return NotificationPresentationPreferences(
+            showsBanner: values.contains { $0.showsBanner },
+            playsSound: values.contains { $0.playsSound },
+            updatesBadge: values.contains { $0.updatesBadge })
+    }
+
     static func badgeCount(
         for reminders: [Reminder],
         settings: UserSettings,
@@ -65,7 +74,7 @@ enum LocalNotificationService {
     ) -> Int {
         reminders.filter { reminder in
             reminder.isActive
-                && settings.notificationPreferences(for: reminder.eventType).updatesBadge
+                && preferences(for: reminder, settings: settings).updatesBadge
                 && reminder.isOverdue(now: now, calendar: calendar)
         }.count
     }
@@ -81,7 +90,7 @@ enum LocalNotificationService {
             return
         }
 
-        let preferences = settings.notificationPreferences(for: reminder.eventType)
+        let preferences = preferences(for: reminder, settings: settings)
 
         guard preferences.showsBanner || preferences.playsSound || preferences.updatesBadge else {
             return
@@ -150,12 +159,12 @@ enum LocalNotificationService {
         settings: UserSettings,
         calendar: Calendar
     ) -> Int {
-        guard settings.notificationPreferences(for: reminder.eventType).updatesBadge else {
+        guard preferences(for: reminder, settings: settings).updatesBadge else {
             return 0
         }
 
         return activeReminders.filter { candidate in
-            settings.notificationPreferences(for: candidate.eventType).updatesBadge
+            preferences(for: candidate, settings: settings).updatesBadge
                 && candidate.displayDueAt() <= reminder.displayDueAt()
                 && candidate.isOverdue(now: reminder.displayDueAt(), calendar: calendar)
         }.count

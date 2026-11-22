@@ -10,7 +10,7 @@ SwiftData remains local and retains unique domain IDs. Its records are not passe
 
 ## Record and ownership boundaries
 
-- `SyncPayload` version 1 covers pets, care events, Health, saved options, reminder definitions/targets, completion records, and automatic food schedules. Notification settings never enter the payload.
+- Legacy `SyncPayload` version 1 covers pets, care events, Health, saved options, reminder definitions/targets, completion records, and automatic food and litter schedules. Notification settings never enter the payload.
 - One `PetTrackerEntityV1` CloudKit record per entity/completion, with a binary `envelope` field. Record names derive from stable domain UUIDs. Recurrence history and logged reminder events have deterministic IDs per reminder/due instant/pet.
 - A personal household uses one custom zone, `PetTrackerHousehold`. `SyncScope` includes container, Development/Production environment, database, zone, and owner. Transport chooses the CloudKit database; UI/domain features do not.
 - Journal files are scoped to container/environment. The first available account binds the journal; a different account pauses sync without importing/uploading its data. Account changes do not reset local history.
@@ -38,7 +38,7 @@ Imports validate the version, identity, payload, and resulting local snapshot. U
 
 The transport pages full-zone changes from a nil token, retaining record system fields in memory for optimistic `.ifServerRecordUnchanged` saves. Per-record conflicts return server envelopes for reconciliation and bounded retries. This initial personal-use implementation avoids persistent-token correctness dependencies; incremental fetch and asset-backed large payloads are future optimizations. Payloads over the conservative 800 KB guard remain local with an explanatory sync status; they are not truncated.
 
-Sync runs on foreground entry, local writes, manual Sync Now, every minute while active, and after iOS posts `CKAccountChanged`. Imported data refreshes the feature store, materializes any due automatic food schedules, and refreshes local notifications without relaunch. Silent/background push delivery is not implemented in this milestone. Signed-out/network failures keep changes local for retry. Unexpected server hard deletions or loss of an established zone pause sync; normal app deletions use durable tombstone records. Automatic destructive CloudKit reset/reseed is not available.
+Sync runs on foreground entry, local writes, manual Sync Now, every minute while active, and after iOS posts `CKAccountChanged`. Imported data refreshes the feature store, materializes any due automatic food and litter schedules, and refreshes local notifications without relaunch. Silent/background push delivery is not implemented in this milestone. Signed-out/network failures keep changes local for retry. Unexpected server hard deletions or loss of an established zone pause sync; normal app deletions use durable tombstone records. Automatic destructive CloudKit reset/reseed is not available.
 
 Local fetch/save errors are thrown and surfaced with retry. Fetches publish only after all repositories succeed. Unreadable records still count as existing data for initialization, preventing accidental reseeding. Startup container failures show a retry screen rather than terminate the app. Diagnostics log operation/error domain/code without private titles or notes.
 
@@ -52,3 +52,11 @@ Local fetch/save errors are thrown and surfaced with retry. Fetches publish only
 UI-test arguments and injected XCTest hosts use isolated local stores/defaults and cannot enable sync, including in CloudKit-flagged builds. UI tests use `UITests.store`; unit-test app hosts use `UnitTestHost.store`. Debug reset/reseed is disabled in a cloud-configured normal app. The full UI script removes its test runner afterward.
 
 Live verification on 2026-09-15 passed on the connected iPhone against the real Development container: an empty second local context downloaded all synced categories, offline edits uploaded after reconnect, and concurrent partial reminder completions converged without duplicate logical results. The app's populated phone dataset also produced real record saves in the Development container. The iPhone 17 simulator's iCloud protected-key state remained `waitfortrust`/`PCSNoPublicIdentity`; its local app data was replaced with a verified copy of the phone data, but that simulator is not evidence of CloudKit transport. This account-specific simulator limitation does not affect the isolated physical-device CloudKit result.
+
+## November 2026 form and recurrence upgrade
+
+Reminder records add optional `eventActionsJSON`; schedule records add optional `eventTypeRawValue`. Legacy reminder payloads and food schedules still decode. A copied public test database from before these fields upgrades without reset. Food scalar columns remain in place for compatibility.
+
+Envelope format 2 is required for reminders with multiple event actions, their completion/skip records, and litter schedules. Other payloads retain format 1. New clients accept both; older clients reject version 2 rather than silently dropping actions or treating litter as food. Update all syncing devices before using these features. CloudKit record type and record identities remain unchanged.
+
+Each reminder action has a stable UUID. Logged event identities derive from occurrence plus action UUID. Completion outcomes can contain multiple events, while legacy single-event outcomes still decode. Partial pet completion, concurrent household completion, recurring history, authored event edits, and deletion replay retain deterministic convergence. Household events log on the first pet completion and converge to the earliest outcome. Mixed reminders combine per-type notification presentation preferences, enabling each flag when any included type enables it.

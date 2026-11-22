@@ -230,26 +230,34 @@ enum SwiftDataMapper {
             return nil
         }
 
+        let actions: [ReminderEventAction]?
+        if let json = record.eventActionsJSON {
+            guard let decoded = try? JSONDecoder().decode([ReminderEventAction].self, from: Data(json.utf8)) else { return nil }
+            actions = decoded
+        } else { actions = nil }
+
         return Reminder(
             id: record.id,
             title: record.title,
             mode: mode,
             eventType: record.eventTypeRawValue.flatMap(CareEventType.init(rawValue:)),
             eventPetID: record.eventPetID,
-            eventData: reminderEventData(from: record),
+            eventData: actions == nil ? reminderEventData(from: record) : nil,
             dueAt: record.dueAt,
             dueStyle: dueStyle,
             status: status,
             schedule: reminderSchedule(from: record),
             targets: reminderTargets(from: record, targetRecords: targetRecords),
             completedAt: record.completedAt,
-            ignoredUntil: record.ignoredUntil
+            ignoredUntil: record.ignoredUntil,
+            eventActions: actions
         )
     }
 
     static func update(_ record: ReminderRecord, with reminder: Reminder) {
         record.title = reminder.title
         record.modeRawValue = reminder.mode.rawValue
+        record.eventActionsJSON = reminder.eventActions.flatMap { try? String(data: JSONEncoder().encode($0), encoding: .utf8) }
         record.eventTypeRawValue = reminder.eventType?.rawValue
         record.eventPetID = reminder.eventPetID
         record.dueAt = reminder.dueAt
@@ -355,11 +363,14 @@ enum SwiftDataMapper {
         let schedule = rule == nil && record.endDate == nil
             ? nil
             : ReminderSchedule(recurrenceRule: rule, endDate: record.endDate)
+        guard record.eventTypeRawValue == nil
+            || record.eventTypeRawValue == CareEventType.food.rawValue
+            || record.eventTypeRawValue == CareEventType.litter.rawValue else { return nil }
         return ScheduledEvent(
             id: record.id,
             title: record.title,
             petID: record.petID,
-            food: FoodEventData(
+            food: record.eventTypeRawValue == CareEventType.litter.rawValue ? nil : FoodEventData(
                 name: record.foodName,
                 foodType: foodType,
                 amount: record.foodAmount,
@@ -367,6 +378,7 @@ enum SwiftDataMapper {
                 calories: record.foodCalories,
                 caloriesPerUnit: record.foodCaloriesPerUnit
             ),
+            eventType: record.eventTypeRawValue.flatMap(CareEventType.init(rawValue:)),
             nextDueAt: record.nextDueAt,
             schedule: schedule,
             calendar: calendar,
@@ -377,17 +389,18 @@ enum SwiftDataMapper {
 
     static func update(_ record: ScheduledEventRecord, with value: ScheduledEvent) {
         record.title = value.title
+        record.eventTypeRawValue = value.eventType?.rawValue
         record.petID = value.petID
         record.createdAt = value.createdAt
         record.updatedAt = value.updatedAt
         record.nextDueAt = value.nextDueAt
         record.calendarJSON = (try? String(data: JSONEncoder().encode(value.calendar), encoding: .utf8)) ?? "{}"
-        record.foodName = value.food.name
-        record.foodTypeRawValue = value.food.foodType.rawValue
-        record.foodAmount = value.food.amount
-        record.foodUnitRawValue = value.food.unit.rawValue
-        record.foodCalories = value.food.calories
-        record.foodCaloriesPerUnit = value.food.caloriesPerUnit
+        record.foodName = value.food?.name ?? ""
+        record.foodTypeRawValue = value.food?.foodType.rawValue ?? FoodType.dry.rawValue
+        record.foodAmount = value.food?.amount ?? 0
+        record.foodUnitRawValue = value.food?.unit.rawValue ?? FoodUnit.cup.rawValue
+        record.foodCalories = value.food?.calories ?? 0
+        record.foodCaloriesPerUnit = value.food?.caloriesPerUnit
         record.recurrenceKind = nil
         record.recurrenceValue = nil
         record.recurrenceUnitRawValue = nil

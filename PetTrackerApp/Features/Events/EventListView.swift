@@ -7,6 +7,9 @@ struct EventListView: View {
     @State private var editingEvent: CareEvent?
     @State private var creationRoute: EventCreationRoute?
     @State private var deletingEvent: CareEvent?
+    @State private var isRecurringExpanded = false
+    @State private var scheduledEventRoute: ScheduledEventEditorRoute?
+    @State private var deletingSchedule: ScheduledEvent?
 
     init(initialSelectedType: CareEventType = .food) {
         _selectedType = State(initialValue: initialSelectedType)
@@ -20,6 +23,17 @@ struct EventListView: View {
 
     private var eventSections: [(day: Date, events: [CareEvent])] {
         filteredEvents.groupedByDay()
+    }
+
+    private var recurringEvents: [ScheduledEvent] {
+        store.scheduledEvents.filter { schedule in
+            guard schedule.isActive, schedule.type == selectedType else { return false }
+            switch petFilter {
+            case .all: return true
+            case .household: return schedule.petID == nil
+            case let .pet(id): return schedule.petID == id
+            }
+        }.sorted { ($0.nextDueAt ?? .distantFuture) < ($1.nextDueAt ?? .distantFuture) }
     }
 
     var body: some View {
@@ -40,7 +54,35 @@ struct EventListView: View {
             }
             .accessibilityIdentifier("events.petFilter")
 
-            Section(selectedType.rawValue) {
+            Section {
+                HStack {
+                    Text(selectedType.rawValue).font(.title2.bold())
+                    Spacer()
+                    Button { creationRoute = .event(selectedType) } label: {
+                        Image(systemName: "plus").frame(minWidth: 44, minHeight: 44)
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Add \(selectedType.rawValue.lowercased()) event")
+                    .accessibilityIdentifier("events.add")
+                }
+                DisclosureGroup("Recurring", isExpanded: $isRecurringExpanded) {
+                    if recurringEvents.isEmpty { Text("No active recurring events").foregroundStyle(.secondary) }
+                    ForEach(recurringEvents) { schedule in
+                        Button { scheduledEventRoute = ScheduledEventEditorRoute(scheduledEvent: schedule) } label: {
+                            ScheduledEventSummaryRow(scheduledEvent: schedule)
+                        }
+                        .foregroundStyle(.primary)
+                        .accessibilityIdentifier("scheduledEvent.row.\(schedule.id)")
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button("Delete") { deletingSchedule = schedule }.tint(.red)
+                                .accessibilityIdentifier("scheduledEvent.delete")
+                            Button("Edit") { scheduledEventRoute = ScheduledEventEditorRoute(scheduledEvent: schedule) }
+                        }
+                    }
+                }
+                .accessibilityIdentifier("events.recurring")
+            }
+            Section {
                 if filteredEvents.isEmpty {
                     ContentUnavailableView("No events yet", systemImage: "calendar.badge.exclamationmark")
                 }
@@ -57,7 +99,7 @@ struct EventListView: View {
                         .foregroundStyle(.primary)
                         .accessibilityIdentifier("events.edit.\(event.id.uuidString)")
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button("Delete", role: .destructive) { deletingEvent = event }
+                            Button("Delete") { deletingEvent = event }.tint(.red)
                                 .accessibilityIdentifier("events.delete")
                         }
                     }
@@ -67,13 +109,16 @@ struct EventListView: View {
             }
         }
         .navigationTitle("Events")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { creationRoute = .event(selectedType) } label: { Image(systemName: "plus") }
-                    .accessibilityLabel("Add \(selectedType.rawValue.lowercased()) event")
-                    .accessibilityIdentifier("events.add")
-            }
+        .onChange(of: selectedType) { _, _ in isRecurringExpanded = false }
+        .sheet(item: $scheduledEventRoute) { route in
+            ScheduledEventEditorView(scheduledEvent: route.scheduledEvent)
         }
+        .alert("Delete recurring event?", isPresented: Binding(
+            get: { deletingSchedule != nil }, set: { if !$0 { deletingSchedule = nil } }
+        ), presenting: deletingSchedule) { schedule in
+            Button("Delete", role: .destructive) { store.deleteScheduledEventAndRefresh(id: schedule.id) }
+            Button("Cancel", role: .cancel) { }
+        } message: { _ in Text("Future events will stop. Events already logged are kept.") }
         .sheet(item: $creationRoute) { route in EventCreationSheet(route: route) }
         .alert("Delete event?", isPresented: Binding(
             get: { deletingEvent != nil }, set: { if !$0 { deletingEvent = nil } }), presenting: deletingEvent) { event in

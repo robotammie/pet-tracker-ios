@@ -4,12 +4,15 @@ struct FoodEventCreationView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var store: PetCareStore
+    @State private var isRecurring = false
+    @State private var recurrence = ScheduledEventEditDraft()
     @State private var savedOptionRoute: SavedOptionCreationRoute?
     @StateObject private var viewModel = FoodEventFormViewModel()
 
     var body: some View {
         Form {
             EventTimestampSection(timestamp: $viewModel.timestamp)
+            RecurringEventFields(isRecurring: $isRecurring, draft: $recurrence)
 
             PetSelectionSection(
                 pets: store.pets,
@@ -68,9 +71,12 @@ struct FoodEventCreationView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
-                    if store.saveCareEventsAndRefresh(viewModel.makeEvents()) { dismiss() }
+                    let saved = isRecurring
+                        ? store.saveScheduledEventsAndRefresh(recurrence.schedules(for: viewModel.makeEvents(), pets: store.pets))
+                        : store.saveCareEventsAndRefresh(viewModel.makeEvents())
+                    if saved { dismiss() }
                 }
-                .disabled(!viewModel.canSave())
+                .disabled(!viewModel.canSave() || (isRecurring && recurrence.schedules(for: viewModel.makeEvents(), pets: store.pets).isEmpty))
                 .accessibilityIdentifier("foodCreation.save")
             }
         }

@@ -131,18 +131,3 @@ struct HealthEntryDraft {
         return entry.isValid ? entry : nil
     }
 }
-
-struct RecentHealthKey: Hashable {
-    var petID: UUID
-    var category: HealthCategory
-}
-
-enum HealthRecentService {
-    static func entries(_ entries: [HealthEntry], now: Date = .now, calendar: Calendar = .current) -> [HealthEntry] {
-        let cutoff = calendar.date(byAdding: .day, value: -7, to: now) ?? now
-        return Dictionary(grouping: entries.filter { $0.happenedAt >= cutoff && $0.happenedAt <= now }) {
-            RecentHealthKey(petID: $0.petID, category: $0.data.category)
-        }.values.compactMap { $0.max { $0.happenedAt < $1.happenedAt } }
-            .sorted { $0.happenedAt > $1.happenedAt }
-    }
-}

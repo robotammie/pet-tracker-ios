@@ -208,3 +208,121 @@ struct ReminderEditDraft {
         return result
     }
 }
+
+struct ReminderEventActionDraft: Identifiable {
+    let id: UUID
+    let type: CareEventType
+    var petID: UUID?
+    var selectedOptionID: UUID?
+    var event: CareEventEditDraft?
+
+    init(type: CareEventType, action: ReminderEventAction? = nil) {
+        id = action?.id ?? UUID()
+        self.type = type
+        petID = action?.petID
+        if let action {
+            event = CareEventEditDraft(event: CareEvent(type: type, petID: action.petID, data: action.data))
+        } else if type == .litter {
+            event = CareEventEditDraft(event: CareEvent(type: .litter, petID: nil, data: .litter(LitterEventData())))
+        }
+    }
+
+    mutating func selectOption(_ option: SavedEventOption?) {
+        selectedOptionID = option?.id
+        guard let option else { return }
+        let data: CareEventData
+        switch option.data {
+        case let .food(food):
+            data = .food(FoodEventData(name: food.name, foodType: food.foodType, amount: 1,
+                unit: food.unit, calories: food.caloriesPerUnit, caloriesPerUnit: food.caloriesPerUnit))
+        case let .medicine(medicine):
+            data = .medicine(MedicineEventData(name: medicine.name, dosage: medicine.dosage,
+                unit: medicine.unit, savedOptionID: option.id,
+                doseInterval: petID.flatMap { medicine.doseInterval(for: $0) } ?? medicine.doseInterval))
+        }
+        event = CareEventEditDraft(event: CareEvent(type: type, petID: petID, data: data))
+    }
+
+    mutating func updatePet(options: [SavedEventOption], pets: [Pet]) {
+        event?.petID = petID
+        guard let selectedOptionID,
+              let option = options.first(where: { $0.id == selectedOptionID }),
+              case let .medicine(medicine) = option.data,
+              var current = event?.makeEvent(pets: pets),
+              case var .medicine(data) = current.data else { return }
+        data.doseInterval = petID.flatMap { medicine.doseInterval(for: $0) } ?? medicine.doseInterval
+        current.data = .medicine(data)
+        event = CareEventEditDraft(event: current)
+    }
+
+    func makeAction(pets: [Pet]) -> ReminderEventAction? {
+        guard var draft = event else { return nil }
+        draft.petID = type == .litter ? nil : petID
+        guard let event = draft.makeEvent(pets: pets) else { return nil }
+        if case let .food(food) = event.data, food.amount <= 0 { return nil }
+        return ReminderEventAction(id: id, petID: event.petID, data: event.data)
+    }
+}
+
+struct ReminderFormDraft {
+    var details: ReminderEditDraft
+    var events: [ReminderEventActionDraft]
+
+    init(reminder: Reminder? = nil) {
+        details = ReminderEditDraft(reminder: reminder)
+        if let actions = reminder?.eventActions {
+            events = actions.map { ReminderEventActionDraft(type: $0.type, action: $0) }
+        } else if let reminder, reminder.mode == .reminderToEvent {
+            let payloads = details.payloads
+            events = payloads.map { payload in
+                let action = ReminderEventAction(
+                    id: SyncIdentity.uuid("legacy-action/\(reminder.id)/\(payload.petID?.uuidString ?? "household")"),
+                    petID: payload.petID, data: payload.event.original.data)
+                return ReminderEventActionDraft(type: action.type, action: action)
+            }
+        } else { events = [] }
+    }
+
+    func makeReminder(pets: [Pet]) -> Reminder? {
+        // Reuse the existing due/recurrence validation independently of event composition.
+        var schedule = ReminderEditDraft(now: details.dueAt)
+        schedule.title = details.title
+        schedule.dueAt = details.dueAt
+        schedule.dueStyle = details.dueStyle
+        schedule.repeatStyle = details.repeatStyle
+        schedule.interval = details.interval
+        schedule.recurrenceUnit = details.recurrenceUnit
+        schedule.dailyTimes = details.dailyTimes
+        schedule.hasEndDate = details.hasEndDate
+        schedule.endDate = details.endDate
+        guard let validated = schedule.makeReminder(pets: pets),
+              details.original == nil || details.original?.isActive == true else { return nil }
+        var result = details.original ?? Reminder(id: details.id, title: validated.title,
+            mode: .pureReminder, eventType: nil, dueAt: validated.dueAt, dueStyle: validated.dueStyle)
+        result.title = validated.title
+        result.dueAt = validated.dueAt
+        result.dueStyle = validated.dueStyle
+        result.schedule = validated.schedule
+        if result.dueAt != details.original?.dueAt { result.ignoredUntil = nil }
+        // Keep the exact completed-target definition, including legacy IDs, during a partial occurrence.
+        if details.hasCompletedTargets { return result }
+        result.eventPetID = nil
+        result.eventData = nil
+        if events.isEmpty {
+            guard details.selectedPetIDs.isSubset(of: Set(pets.map(\.id))) else { return nil }
+            result.mode = .pureReminder
+            result.eventActions = nil
+            result.eventType = nil
+            result.targets = details.selectedPetIDs.sorted { $0.uuidString < $1.uuidString }.map { ReminderTarget(petID: $0) }
+        } else {
+            let actions = events.compactMap { $0.makeAction(pets: pets) }
+            guard actions.count == events.count else { return nil }
+            result.mode = .reminderToEvent
+            result.eventActions = actions
+            let types = Set(actions.map(\.type))
+            result.eventType = types.count == 1 ? types.first : nil
+            result.targets = Set(actions.compactMap(\.petID)).sorted { $0.uuidString < $1.uuidString }.map { ReminderTarget(petID: $0) }
+        }
+        return result
+    }
+}

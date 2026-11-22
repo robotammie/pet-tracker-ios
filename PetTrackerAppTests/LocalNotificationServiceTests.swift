@@ -2,6 +2,21 @@ import XCTest
 @testable import PetTrackerApp
 
 final class LocalNotificationServiceTests: XCTestCase {
+    func testSystemDefaultsIgnoreOldHiddenGlobalSwitchesAndMixedTypesCombineOverrides() {
+        var settings = UserSettings.defaults
+        settings.globalNotificationPreferences = .init(showsBanner: false, playsSound: false, updatesBadge: false)
+        XCTAssertEqual(settings.notificationPreferences(for: nil), .defaults)
+        settings.setNotificationPreferences(.init(showsBanner: false, playsSound: false, updatesBadge: false), for: .food)
+        let reminder = Reminder(title: "Dinner", mode: .reminderToEvent, eventType: nil, dueAt: .now,
+            dueStyle: .timestamp, eventActions: [
+                ReminderEventAction(data: .food(FoodEventData(name: "Food", foodType: .dry, amount: 1, unit: .cup, calories: 10))),
+                ReminderEventAction(petID: UUID(), data: .medicine(MedicineEventData(name: "Med", dosage: 1, unit: "pill")))])
+        XCTAssertEqual(LocalNotificationService.preferences(for: reminder, settings: settings), .defaults)
+        settings.setNotificationPreferences(nil, for: .food)
+        XCTAssertFalse(settings.hasNotificationOverride(for: .food))
+        XCTAssertEqual(settings.notificationPreferences(for: .food), .defaults)
+    }
+
     func testBadgeCountIncludesOnlyActiveOverdueBadgeEnabledReminders() throws {
         let calendar = Calendar(identifier: .gregorian)
         let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 6, day: 3, hour: 12)))
@@ -58,13 +73,13 @@ final class LocalNotificationServiceTests: XCTestCase {
         let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 6, day: 3, hour: 12)))
         let overdue = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 6, day: 3, hour: 10)))
         var settings = UserSettings.defaults
-        settings.globalNotificationPreferences.updatesBadge = false
+        settings.setNotificationPreferences(NotificationPresentationPreferences(showsBanner: true, playsSound: true, updatesBadge: false), for: .food)
 
         let reminders = [
             Reminder(
                 title: "Overdue",
                 mode: .pureReminder,
-                eventType: nil,
+                eventType: .food,
                 dueAt: overdue,
                 dueStyle: .timestamp
             )

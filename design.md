@@ -93,9 +93,9 @@ Step 6 must include Health records, preserve existing local history, prevent dup
 
 Sync execution update (2026-09-15): the developer account, signing team, app identifier, and Development CloudKit container are configured. Future multi-user/household sharing remains a product goal. Stable identities and account/database/record ownership remain behind repository/sync boundaries; sharing UI, invitations, and permissions remain future work. Data stays local and/or in users' iCloud, without app server-side state.
 
-Stage 6 implementation: explicit CloudKit transport over local SwiftData, a durable offline journal with tombstones, deterministic completion reconciliation, and account/container/environment/zone scope boundaries. Signed Debug builds use the Development container; Release remains local-only until its schema is deployed. All app data, including Health and automatic food schedules, is mapped; notification preferences remain device-local. Foreground/import/account-change refresh and local notification rescheduling are implemented. No background push or sharing UI is included. See [sync-design.md](sync-design.md) for conflicts, durability, provisioning, live verification, and the future household-sharing path.
+Stage 6 implementation: explicit CloudKit transport over local SwiftData, a durable offline journal with tombstones, deterministic completion reconciliation, and account/container/environment/zone scope boundaries. Signed Debug builds use the Development container; Release remains local-only until its schema is deployed. All app data, including Health and automatic food and litter schedules, is mapped; notification preferences remain device-local. Foreground/import/account-change refresh and local notification rescheduling are implemented. No background push or sharing UI is included. See [sync-design.md](sync-design.md) for conflicts, durability, provisioning, live verification, and the future household-sharing path.
 
-Stages 6.2–6.3 add direct active-reminder editing, confirmed recurrence deletion, and food-only automatic event schedules. Delete This Occurrence advances from the scheduled due time without completion history or a care event. Delete All removes the active series and its completed reminder history while retaining logged care events. Automatic schedules are separate synced entities: they create deterministic food events at their intended timestamps when the app next runs, without reminders or notifications. Stage 6.1 event archive/restore/duplicate work remains planned.
+Stages 6.2–6.3 add direct active-reminder editing, confirmed recurrence deletion, and automatic food and litter event schedules. Delete This Occurrence advances from the scheduled due time without completion history or a care event. Delete All removes the active series and its completed reminder history while retaining logged care events. Automatic schedules are separate synced entities: they create deterministic food or litter events at their intended timestamps when the app next runs, without reminders or notifications. Stage 6.1 event archive/restore/duplicate work remains planned.
 
 ## Data
 ### pet
@@ -230,9 +230,8 @@ Form behavior:
 ### notification
 include relevant event info so it can autolog an event when marked complete.
 
-- Notification mode:
-    - Pure reminder: completing/ignoring/deleting affects only the reminder.
-    - Reminder to event: completing the reminder can create/log the associated event.
+- The editor has no Mode selector. With no Create Events entries, completion affects only the reminder.
+- Optional Create Events entries can combine multiple types and pets, including food and medicine together. Each entry stores its payload snapshot. Household entries log with the first pet completion; each pet completion logs that pet’s entries together. Medication warnings apply to the complete batch.
 - Recurrence options:
     - Every N hours
     - Every N days
@@ -259,7 +258,8 @@ include relevant event info so it can autolog an event when marked complete.
 
 ### automatic scheduled event
 - A scheduled event is separate from a notification and has no alert, completion, ignore, mute, or reminder history.
-- The initial scope is saved food for automatic-feeder use, with household or one-pet scope, recurrence, and an optional end date.
+- Automatic food (household or selected pets) and household litter events support recurrence and an optional end date. Medicine remains manual or reminder-completed.
+- Create through the Recurring checkbox on event add. Active schedules appear in an initially collapsed Recurring section below the Events category heading and above the log. The add button sits beside the category heading.
 - iOS does not guarantee app execution at an exact minute. Due occurrences are created on launch, foreground refresh, successful sync, and schedule saves; the care event keeps the intended scheduled timestamp.
 - Occurrence IDs derive from schedule ID and scheduled timestamp so retries and multiple devices converge without duplicate events.
 - Editing affects future occurrences. Deleting stops future creation and retains previously created care events.
@@ -268,10 +268,8 @@ include relevant event info so it can autolog an event when marked complete.
 Initial settings should stay small and focused.
 
 Notification preferences:
-- Global notification presentation preference.
-    - Banner, sound, and badge controls should be available in-app for finer granularity.
-    - iOS system settings may still override app-level notification preferences.
-    - Notification presentation preferences are per-device.
+- Settings > Notifications opens one page, with daily reminder time at the top. Global presentation controls are managed in iPhone Settings.
+- Food, Medicine, and Litter overrides appear below, with Use default initially selected. Changing any banner/sound/badge option turns Use default off; selecting Use default clears the override. All preferences remain device-local.
 - Optional per-event-type notification preferences.
     - Example: medicine reminders may be more intrusive than litter reminders.
     - Banner, sound, and badge preferences may vary by event type.
@@ -290,8 +288,9 @@ Notification preferences:
             - for reminder-to-event notifications, logs an event when completed
         - ignore button with "ignore until" date/time
         - new notification button
-    - Most recent action per category (per pet, if relevant)
-    - Button to view all events in a category
+    - Recent care and health entries: all from the past 24 hours or the latest 10, whichever includes more, newest first and grouped by local day; exclude future timestamps
+    - Recent rows do nothing on tap; swipe left for Edit/Delete with deletion confirmation
+    - Reminder rows swipe left for Edit/Delete and right for Skip Instance; skipping advances a recurring reminder or removes a one-off without logging an event
     - Button to add event to a category
 - Events
     - per event type
@@ -323,7 +322,7 @@ Notification preferences:
     - can be marked as done with the option to select done at time
     - can be ignored until a selected date/time
     - can be edited/deleted
-    - includes a Scheduled Events section for adding, editing, and deleting food schedules
+    - the inline Reminders heading has a single + for reminder creation; automatic schedules are managed on Events
 - Settings
     - notification preferences
     - default day-only notification time
@@ -379,7 +378,7 @@ Intervals should be entered from the veterinarian's prescription, not inferred f
 
 **Health & Life (Stage 5.9 implemented):** Pets → pet detail uses a Care / Health picker. Health has typed weight, vet visits, procedures, and general notes, with required pet/title, happenedAt, immutable createdAt, updatedAt, notes, and optional clinic/provider. Weight is finite and positive, defaults to lb, and retains an explicit lb/kg unit without conversion. Date-grouped history supports category filtering, add with a preselected pet, and tap-to-edit. A separate HealthEntry repository and SwiftData record keep care calories and reminder history independent.
 
-Home Quick Add ends with Health; its editor requires choosing a pet. Recent merges care and health chronologically, keeping the latest entry per pet/category over the last seven days, excluding future timestamps. A health Recent row opens its pet's Health view. Follow-up reminders, charts, attachments, imports, custom categories, and integrations are deferred. Medication interactions have been removed from scope at the user's request.
+Home Quick Add ends with Health; its editor requires choosing a pet. Recent merges care and health chronologically using the past-24-hours-or-latest-10 rule, grouped by day and excluding future timestamps. Recent rows do nothing on tap and offer editing and confirmed deletion on left swipe. Follow-up reminders, charts, attachments, imports, custom categories, and integrations are deferred. Medication interactions have been removed from scope at the user's request.
 
 Detailed approved behavior and acceptance checks are in [health-design-options.md](health-design-options.md).
 

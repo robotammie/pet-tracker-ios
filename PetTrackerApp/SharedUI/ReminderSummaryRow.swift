@@ -88,3 +88,45 @@ struct ReminderSummaryRow: View {
         .font(.caption.weight(.medium))
     }
 }
+
+private struct ReminderDeletionAlert: ViewModifier {
+    @EnvironmentObject private var store: PetCareStore
+    @Binding var reminder: Reminder?
+
+    func body(content: Content) -> some View {
+        content
+        .alert("Delete reminder?", isPresented: Binding(
+            get: { reminder != nil },
+            set: { if !$0 { reminder = nil } }
+        ), presenting: reminder) { reminder in
+            if reminder.isRecurring {
+                Button("Delete This Occurrence", role: .destructive) {
+                    store.deleteReminderOccurrenceAndRefresh(reminder)
+                }
+                .accessibilityIdentifier("reminder.deleteOccurrence")
+                Button("Delete All", role: .destructive) {
+                    store.deleteReminderSeriesAndRefresh(reminder)
+                }
+                .accessibilityIdentifier("reminder.deleteAll")
+            } else {
+                Button("Delete Reminder", role: .destructive) {
+                    store.deleteReminderAndRefresh(id: reminder.id)
+                }
+                .accessibilityIdentifier("reminder.confirmDelete")
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: { reminder in
+            if reminder.isRecurring {
+                Text("Delete this occurrence and keep the series, or delete the series and all of its completed reminder history. Logged care events are kept.")
+            } else {
+                Text("This removes the reminder. Logged care events are kept.")
+            }
+        }
+    }
+}
+
+extension View {
+    func reminderDeletionAlert(reminder: Binding<Reminder?>) -> some View {
+        modifier(ReminderDeletionAlert(reminder: reminder))
+    }
+}

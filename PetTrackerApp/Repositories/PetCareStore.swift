@@ -127,6 +127,14 @@ final class PetCareStore: ObservableObject {
         healthEntries.filter { $0.petID == petID }.sorted { $0.happenedAt > $1.happenedAt }
     }
 
+    @discardableResult
+    func deleteHealthEntryAndRefresh(id: UUID) -> Bool {
+        writePersistence {
+            if let healthRepository { try healthRepository.deleteHealthEntry(id: id) }
+            else { healthEntries.removeAll { $0.id == id } }
+        }
+    }
+
     func saveHealthEntryAndRefresh(_ entry: HealthEntry) throws {
         guard entry.isValid, pets.contains(where: { $0.id == entry.petID }) else {
             throw HealthSaveError.invalidEntry
@@ -454,6 +462,19 @@ final class PetCareStore: ObservableObject {
             }
         }
         if saved { syncLocalNotifications() }
+        return saved
+    }
+
+    @discardableResult
+    func saveScheduledEventsAndRefresh(_ schedules: [ScheduledEvent]) -> Bool {
+        guard !schedules.isEmpty else { return false }
+        let saved = writePersistence {
+            for schedule in schedules {
+                if let scheduledEventRepository { try scheduledEventRepository.saveScheduledEvent(schedule) }
+                else { saveScheduledEvent(schedule) }
+            }
+        }
+        if saved { materializeScheduledEvents() }
         return saved
     }
 

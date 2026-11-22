@@ -126,6 +126,7 @@ enum ScheduledEventService {
         calendar: Calendar? = nil
     ) -> ScheduledEventMaterialization {
         var updated = scheduledEvent
+        guard let data = scheduledEvent.data else { return ScheduledEventMaterialization(updatedSchedule: updated, events: []) }
         let calendar = calendar ?? scheduledEvent.calendar
         var events: [CareEvent] = []
         let safeLimit = max(1, limit)
@@ -133,11 +134,11 @@ enum ScheduledEventService {
         while let dueAt = updated.nextDueAt, dueAt <= now, events.count < safeLimit {
             events.append(CareEvent(
                 id: SyncIdentity.scheduledEvent(scheduleID: updated.id, scheduledAt: dueAt),
-                type: .food,
+                type: scheduledEvent.type,
                 petID: updated.petID,
                 createdAt: now,
                 startTime: dueAt,
-                data: .food(updated.food)
+                data: data
             ))
 
             if let schedule = updated.schedule,

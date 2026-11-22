@@ -17,6 +17,30 @@ enum ReminderActionService {
         var updated = reminder
         var events: [CareEvent] = []
 
+        if let actions = reminder.eventActions {
+            let newlyCompleted = Set(reminder.incompleteTargets.filter { completedPetIDs.contains($0.petID) }.map(\.petID))
+            // Household entries belong to the first completion of this occurrence.
+            let includeHousehold = reminder.targets.isEmpty ||
+                (!newlyCompleted.isEmpty && reminder.targets.allSatisfy { $0.completedAt == nil })
+            if createsEvent {
+                events = actions.filter { action in
+                    action.petID.map { newlyCompleted.contains($0) } ?? includeHousehold
+                }.map { action in
+                    CareEvent(id: SyncIdentity.event(reminder, actionID: action.id), type: action.type,
+                        petID: action.petID, createdAt: completionTime, startTime: completionTime, data: action.data)
+                }
+            }
+            updated.targets = reminder.targets.map { target in
+                var target = target
+                if newlyCompleted.contains(target.petID) { target.completedAt = completionTime }
+                return target
+            }
+            if !updated.incompleteTargets.isEmpty {
+                return ReminderCompletionResult(updatedReminder: updated, historyReminder: nil, events: events)
+            }
+            return finish(updated, completionTime: completionTime, events: events, calendar: calendar)
+        }
+
         if updated.targets.isEmpty {
             if createsEvent, let event = event(from: updated, petID: updated.eventPetID, completionTime: completionTime) {
                 events.append(event)
@@ -112,7 +136,8 @@ enum ReminderActionService {
             schedule: nil,
             targets: history.targets,
             completedAt: completionTime,
-            ignoredUntil: nil
+            ignoredUntil: nil,
+            eventActions: reminder.eventActions
         )
 
         return ReminderCompletionResult(updatedReminder: next, historyReminder: history, events: events)

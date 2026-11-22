@@ -950,3 +950,49 @@ The first useful milestone should be:
 - simple architecture in place
 
 This gives a visible app quickly while validating the hardest display rules before persistence, sync, and notifications add complexity.
+
+## Home interaction follow-up — Complete (2026-11-22)
+
+Requested after the user updated the physical iPhone and confirmed its saved data remained intact.
+
+- Home care/health events and reminders expose Edit/Delete on left swipe. Event deletion is confirmed; recurring reminder deletion retains occurrence/series choices through a shared confirmation with the Reminders tab.
+- Home event taps no longer navigate. Editors are opened through swipe actions.
+- Right swipe on Home reminders exposes Skip Instance, reusing the existing synced occurrence-skip path. Recurring reminders advance; one-offs are removed. Neither logs a care event or completion history.
+- Recent shows all care and health entries in the past 24 hours, extending to the latest 10 when needed, newest first with local-day headings. Future timestamps are excluded; category collapsing is removed.
+- Health deletion goes through repository transactions and sync tombstones. No database schema changes or data reset.
+
+Verification:
+- App/test build passed on the iPhone 17 simulator.
+- Full unit/persistence/sync suite: **123 tests passed**, including 24-hour boundary, more-than-10 entries, older-history fallback, mixed care/health ordering, day grouping, health deletion persistence/failure, and deletion sync/replay.
+- Four focused UI workflows passed across runs: Home care-event tap/edit/delete/cancel/relaunch; Home reminder edit/skip/delete/relaunch; Health creation/Home swipe editing/deletion/pet timeline/persistence; existing Home Complete Now.
+- Initial UI failures were a missed initial Health tap (passed on rerun), an incorrect test expectation that a skipped reminder beyond Home's Due window would remain visible, and an ambiguous XCTest confirmation-button selector. The expectation/selector were corrected and the affected tests passed. The full UI suite and physical-device verification were not rerun for this follow-up.
+- Result bundles under `/Users/tammie/Library/Developer/XcodeBuildMCP/workspaces/PetTrackerApp-8636fea96c6a/result-bundles/`:
+  - `test_sim_2026-11-22T19-39-40-635Z_pid82668_f688fe25.xcresult`: passing Home care-event workflow (initial run also contains the documented UI failures).
+  - `test_sim_2026-11-22T19-42-18-724Z_pid82668_b5c22d0b.xcresult`: all 123 unit tests and Health workflow passed (reminder selector failed before correction).
+  - `test_sim_2026-11-22T19-44-59-307Z_pid82668_89d052ee.xcresult`: both Home reminder workflow and Complete Now passed, zero failures.
+- `git diff --check` passed. Changes are not committed yet; the pre-existing untracked shared Xcode scheme was preserved.
+
+## November 22, 2026: Events, Reminders, and Notifications refinement
+
+- [x] Move Events + beside the category subheading; add an initially collapsed Recurring section above the log.
+- [x] Create automatic food and litter schedules through Recurring on event add; repeat and end-date controls expand when enabled. Medicine remains manual/reminder-completed.
+- [x] Keep Reminders + in the heading bar and exclusively for reminders. Remove Mode; optional Create Events entries support multiple types, pets, and payload snapshots.
+- [x] Preserve atomic medication-warning behavior for combined completion and deterministic sync for every action, partial pet completion, household entries, and replayed deletion.
+- [x] Open a single Notifications page from Settings; daily reminder time first, followed by Food/Medicine/Litter overrides. Use default starts selected and clears on option changes. Remove global presentation controls handled in iPhone Settings.
+- [x] Keep legacy reminders and food schedules readable; add optional SwiftData fields and explicit sync envelope version 2 for the new payloads.
+- [x] Build and pass 131 unit tests, including upgrade of a copied pre-change public test database without reset.
+- [x] Complete screen-flow regression verification and record results below.
+
+The Stage 5 settings and Stage 6.3 Reminders-tab schedule UI descriptions above are historical; this refinement supersedes those screen locations and expands automatic schedules to litter.
+
+Verification evidence (iPhone 17 simulator, iOS 26.5; isolated public test store):
+
+- Full unit rerun: 131 passed, including pre-upgrade database preservation and litter-only action persistence. `test_sim_2026-11-22T20-33-25-924Z_pid82668_01be95f8.xcresult` also passes the mixed food/medicine reminder UI flow.
+- Initial 26-test UI run passed 23. Remaining issues were a narrow menu hit target, scrolling to virtualized form fields, and a real collection-view crash when a destructive swipe animation removed a reminder that was only being skipped.
+- Confirmation-opening swipe buttons now use red tint without a destructive role; the alert performs the actual deletion. Keyboard dismissal, scrolling tests, and Add event hit area are corrected.
+- Focused rerun passes all four tests: Home reminder edit/skip/delete, recurring litter create/delete with retained history, plain reminder create/edit/cancel/relaunch/skip/delete, and recurring food create/relaunch/edit. `test_sim_2026-11-22T20-37-31-648Z_pid82668_0f6d9bb3.xcresult`.
+- Reviewed screenshots of Notifications defaults/overrides, the mixed-event reminder form, and Events recurring section above its dated log. Added persistent Amount/Calories/Dose labels to the reminder form.
+
+Result bundles are under `~/Library/Developer/XcodeBuildMCP/workspaces/PetTrackerApp-8636fea96c6a/result-bundles/`. No personal simulator store or physical phone data was reset during this work.
+
+Final focused run passes mixed-event reminder creation/completion with labeled payload fields, Events deletion cancel/confirm/relaunch, and Home no-op tap/edit/delete: `test_sim_2026-11-22T20-40-47-372Z_pid82668_cd982611.xcresult`. All 26 UI workflows have passing results across the full run and focused reruns after fixes; 131 unit tests pass. Build and `git diff --check` pass.

@@ -6,6 +6,10 @@ struct HomeView: View {
     @State private var isRecentExpanded = true
     @State private var healthRoute: HealthEditorRoute?
     @State private var creationRoute: EventCreationRoute?
+    @State private var editingEvent: CareEvent?
+    @State private var reminderRoute: ReminderEditorRoute?
+    @State private var deletingReminder: Reminder?
+    @State private var deletingItem: HomeRecentItem?
     private let calendar = Calendar.current
 
     var body: some View {
@@ -25,7 +29,7 @@ struct HomeView: View {
 
             Section {
                 DisclosureGroup(isExpanded: $isRecentExpanded) {
-                    recentByCategoryContent
+                    recentContent
                 } label: {
                     Label("Recent", systemImage: "clock")
                         .font(.headline)
@@ -35,6 +39,27 @@ struct HomeView: View {
         .navigationTitle("Pet Tracker")
         .sheet(item: $healthRoute) { route in
             HealthEntryEditorView(entry: route.entry, petID: route.petID)
+        }
+        .sheet(item: $editingEvent) { event in
+            CareEventEditorView(event: event)
+        }
+        .sheet(item: $reminderRoute) { route in
+            ReminderEditorView(reminder: route.reminder)
+        }
+        .reminderDeletionAlert(reminder: $deletingReminder)
+        .alert("Delete event?", isPresented: Binding(
+            get: { deletingItem != nil },
+            set: { if !$0 { deletingItem = nil } }
+        ), presenting: deletingItem) { item in
+            Button("Delete", role: .destructive) {
+                switch item {
+                case let .care(event): store.deleteCareEventAndRefresh(id: event.id)
+                case let .health(entry): store.deleteHealthEntryAndRefresh(id: entry.id)
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: { _ in
+            Text("This permanently removes the logged entry. Reminder completion history stays as recorded.")
         }
         .sheet(item: $creationRoute) { route in
             EventCreationSheet(route: route)
@@ -80,57 +105,77 @@ struct HomeView: View {
                 ReminderSummaryRow(
                     reminder: reminder,
                     showsEventIcon: true,
+                    rowAccessibilityIdentifier: "home.reminder.\(reminder.id.uuidString)",
                     onCompleteNow: { store.completeReminderNowAndRefresh(id: reminder.id) }
                 )
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var recentByCategoryContent: some View {
-        let items = recentHomeItems()
-        if items.isEmpty {
-            ContentUnavailableView("No events yet", systemImage: "calendar.badge.exclamationmark")
-        } else {
-            ForEach(items) { item in
-                switch item {
-                case let .care(event):
-                    NavigationLink { EventListView(initialSelectedType: event.type) } label: {
-                        HomeRecentEventRow(event: event, petName: store.petName(for: event.petID))
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button("Delete") { deletingReminder = reminder }.tint(.red)
+                        .accessibilityIdentifier("home.reminder.delete")
+                    Button("Edit") { reminderRoute = ReminderEditorRoute(reminder: reminder) }
+                        .tint(.blue)
+                        .accessibilityIdentifier("home.reminder.edit")
+                }
+                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                    Button("Skip Instance", systemImage: "forward.end") {
+                        store.deleteReminderOccurrenceAndRefresh(reminder)
                     }
-                case let .health(entry):
-                    if let pet = store.pets.first(where: { $0.id == entry.petID }) {
-                        NavigationLink { PetDetailView(pet: pet, initialHealth: true) } label: {
-                            HealthSummaryRow(entry: entry, petName: pet.name)
-                        }
-                        .accessibilityIdentifier("home.recentHealth.\(entry.id)")
-                    }
+                    .tint(.orange)
+                    .accessibilityIdentifier("home.reminder.skip")
                 }
             }
         }
     }
 
-    private func recentHomeItems(now: Date = .now) -> [HomeRecentItem] {
-        (recentHomeEvents(now: now).map(HomeRecentItem.care)
-            + HealthRecentService.entries(store.healthEntries, now: now).map(HomeRecentItem.health))
-            .sorted { $0.date > $1.date }
+    @ViewBuilder
+    private var recentContent: some View {
+        let sections = HomeRecentService.sections(
+            events: store.events, health: store.healthEntries, calendar: calendar)
+        if sections.isEmpty {
+            ContentUnavailableView("No events yet", systemImage: "calendar.badge.exclamationmark")
+        } else {
+            ForEach(sections, id: \.day) { section in
+                Text(section.day.formatted(date: .abbreviated, time: .omitted))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 8)
+                    .accessibilityAddTraits(.isHeader)
+                ForEach(section.items) { item in
+                    recentRow(item)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button("Delete") { deletingItem = item }.tint(.red)
+                                .accessibilityIdentifier("home.event.delete")
+                            Button("Edit") {
+                                switch item {
+                                case let .care(event): editingEvent = event
+                                case let .health(entry):
+                                    healthRoute = HealthEditorRoute(entry: entry, petID: entry.petID)
+                                }
+                            }
+                            .tint(.blue)
+                            .accessibilityIdentifier("home.event.edit")
+                        }
+                }
+            }
+        }
     }
 
-    private func recentHomeEvents(now: Date = .now) -> [CareEvent] {
-        let cutoff = calendar.date(byAdding: .day, value: -7, to: now) ?? now
-        let groupedEvents = Dictionary(grouping: store.events.filter { event in
-            event.startTime >= cutoff && event.startTime <= now
-        }) { event in
-            RecentEventKey(type: event.type, petID: event.petID)
+    @ViewBuilder
+    private func recentRow(_ item: HomeRecentItem) -> some View {
+        Group {
+            switch item {
+            case let .care(event):
+                HomeRecentEventRow(event: event, petName: store.petName(for: event.petID))
+            case let .health(entry):
+                HealthSummaryRow(entry: entry, petName: store.petName(for: entry.petID))
+            }
         }
-
-        return groupedEvents.values
-            .compactMap { events in events.max { $0.startTime < $1.startTime } }
-            .sorted { $0.startTime > $1.startTime }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("home.recent.\(item.id)")
     }
 }
 
-private enum HomeRecentItem: Identifiable {
+enum HomeRecentItem: Identifiable {
     case care(CareEvent)
     case health(HealthEntry)
     var id: String {
@@ -141,9 +186,27 @@ private enum HomeRecentItem: Identifiable {
     }
 }
 
-private struct RecentEventKey: Hashable {
-    var type: CareEventType
-    var petID: UUID?
+enum HomeRecentService {
+    static func items(events: [CareEvent], health: [HealthEntry], now: Date = .now) -> [HomeRecentItem] {
+        let combined: [HomeRecentItem] = events.map { .care($0) } + health.map { .health($0) }
+        let past = combined.filter { $0.date <= now }
+        let sorted = past.sorted { lhs, rhs in
+            if lhs.date == rhs.date { return lhs.id < rhs.id }
+            return lhs.date > rhs.date
+        }
+        let cutoff = now.addingTimeInterval(-24 * 60 * 60)
+        return sorted.enumerated().compactMap { index, item in
+            index < 10 || item.date >= cutoff ? item : nil
+        }
+    }
+
+    static func sections(events: [CareEvent], health: [HealthEntry], now: Date = .now,
+                         calendar: Calendar = .current) -> [(day: Date, items: [HomeRecentItem])] {
+        let grouped = Dictionary(grouping: items(events: events, health: health, now: now)) {
+            calendar.startOfDay(for: $0.date)
+        }
+        return grouped.map { (day: $0.key, items: $0.value) }.sorted { $0.day > $1.day }
+    }
 }
 
 private struct HomeRecentEventRow: View {

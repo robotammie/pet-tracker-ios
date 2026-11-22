@@ -16,6 +16,62 @@ final class HealthEntryTests: XCTestCase {
         return HealthEntry(petID: petID ?? pet.id, happenedAt: now.addingTimeInterval(hours * 3_600), title: category.rawValue, notes: "Recorded details", clinic: "Clinic", provider: "Vet", data: data)
     }
 
+    func testHomeRecentIncludesEveryEntryWithin24HoursWithoutCategoryCollapsing() {
+        let entries = (0..<15).map { entry(hours: -Double($0)) }
+        let boundary = entry(hours: -24)
+        let older = entry(hours: -25)
+        let future = entry(hours: 1)
+        let result = HomeRecentService.items(events: [], health: entries + [boundary, older, future], now: now)
+        XCTAssertEqual(result.map(\.id), (entries + [boundary]).map { "health.\($0.id)" })
+    }
+
+    func testHomeRecentExtendsToTenAcrossCareAndHealthAndGroupsByLocalDay() {
+        let entries = (1...12).map { entry(hours: -Double($0 * 24)) }
+        let care = CareEvent(type: .litter, petID: nil, startTime: now, data: .litter(LitterEventData()))
+        let result = HomeRecentService.items(events: [care], health: entries, now: now)
+        XCTAssertEqual(result.count, 10)
+        XCTAssertEqual(result.first?.id, "care.\(care.id)")
+        XCTAssertEqual(result.last?.id, "health.\(entries[8].id)")
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: -8 * 3_600)!
+        let sections = HomeRecentService.sections(events: [care], health: entries, now: now, calendar: calendar)
+        XCTAssertEqual(sections.count, 10)
+        XCTAssertEqual(sections.first?.day, calendar.startOfDay(for: now))
+        XCTAssertEqual(sections.flatMap { $0.items }.map { $0.id }, result.map(\.id))
+        XCTAssertTrue(HomeRecentService.items(events: [], health: [], now: now).isEmpty)
+        XCTAssertEqual(HomeRecentService.items(events: [], health: [entries[0]], now: now).count, 1)
+    }
+
+    func testHealthDeletePersistsAndKeepsOtherEntries() throws {
+        let container = try ModelContainer(for: HealthEntryRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
+        let context = ModelContext(container)
+        let repository = SwiftDataHealthEntryRepository(context: context)
+        let first = entry()
+        let second = entry(.weight)
+        try repository.saveHealthEntry(first)
+        try repository.saveHealthEntry(second)
+        let backing = PetCareStore(pets: [pet])
+        let store = PetCareStore(pets: [pet])
+        store.configurePersistence(petRepository: backing, eventRepository: backing,
+            savedOptionRepository: backing, reminderRepository: backing, healthRepository: repository)
+        XCTAssertTrue(store.refreshFromPersistence())
+        XCTAssertTrue(store.deleteHealthEntryAndRefresh(id: first.id))
+        XCTAssertEqual(store.healthEntries, [second])
+        XCTAssertEqual(try SwiftDataHealthEntryRepository(context: ModelContext(container)).listHealthEntries(), [second])
+    }
+
+    func testFailedHealthDeleteKeepsPublishedHistory() {
+        let health = entry()
+        let backing = PetCareStore(pets: [pet])
+        let store = PetCareStore(pets: [pet], healthEntries: [health])
+        store.configurePersistence(petRepository: backing, eventRepository: backing,
+            savedOptionRepository: backing, reminderRepository: backing, healthRepository: FailingHealthRepository())
+        XCTAssertFalse(store.deleteHealthEntryAndRefresh(id: health.id))
+        XCTAssertEqual(store.healthEntries, [health])
+        XCTAssertNotNil(store.persistenceError)
+    }
+
     func testDraftRequiresPetTitleAndFinitePositiveWeightAndDefaultsToPounds() {
         var draft = HealthEntryDraft()
         XCTAssertEqual(draft.weightUnit, .pound)
@@ -48,17 +104,6 @@ final class HealthEntryTests: XCTestCase {
         guard case let .weight(weight) = edited.data else { return XCTFail("Expected weight") }
         XCTAssertEqual(weight.value, 9.5)
         XCTAssertEqual(weight.unit, .kilogram)
-    }
-
-    func testRecentKeepsLatestPerPetAndCategoryExcludesOldAndFuture() {
-        let otherPet = UUID()
-        let old = entry(.weight, hours: -169)
-        let first = entry(.weight, hours: -5)
-        let latest = entry(.weight, hours: -1)
-        let other = entry(.weight, petID: otherPet, hours: -2)
-        let note = entry(.generalNote, hours: -3)
-        let future = entry(.vetVisit, hours: 1)
-        XCTAssertEqual(HealthRecentService.entries([old, first, latest, other, note, future], now: now).map(\.id), [latest.id, other.id, note.id])
     }
 
     func testHealthStoreUpsertsFiltersAndLeavesCareAndRemindersIndependent() throws {
@@ -128,4 +173,5 @@ private struct FailingHealthRepository: HealthEntryRepository {
     enum Failure: Error { case save }
     func listHealthEntries() -> [HealthEntry] { [] }
     func saveHealthEntry(_ entry: HealthEntry) throws { throw Failure.save }
+    func deleteHealthEntry(id: UUID) throws { throw Failure.save }
 }

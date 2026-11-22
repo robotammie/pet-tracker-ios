@@ -268,6 +268,19 @@ struct ReminderTarget: Identifiable, Hashable, Codable {
     }
 }
 
+struct ReminderEventAction: Identifiable, Hashable, Codable {
+    var id: UUID = UUID()
+    var petID: UUID?
+    var data: CareEventData
+    var type: CareEventType { data.eventType }
+}
+
+extension CareEventData {
+    var eventType: CareEventType {
+        switch self { case .food: .food; case .medicine: .medicine; case .litter: .litter }
+    }
+}
+
 struct Reminder: Identifiable, Hashable, Codable {
     let id: UUID
     var title: String
@@ -275,6 +288,7 @@ struct Reminder: Identifiable, Hashable, Codable {
     var eventType: CareEventType?
     var eventPetID: UUID?
     var eventData: CareEventData?
+    var eventActions: [ReminderEventAction]?
     var dueAt: Date
     var dueStyle: ReminderDueStyle
     var status: ReminderStatus
@@ -339,7 +353,8 @@ struct Reminder: Identifiable, Hashable, Codable {
         schedule: ReminderSchedule? = nil,
         targets: [ReminderTarget] = [],
         completedAt: Date? = nil,
-        ignoredUntil: Date? = nil
+        ignoredUntil: Date? = nil,
+        eventActions: [ReminderEventAction]? = nil
     ) {
         self.id = id
         self.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -358,6 +373,7 @@ struct Reminder: Identifiable, Hashable, Codable {
         }
         self.completedAt = completedAt
         self.ignoredUntil = ignoredUntil
+        self.eventActions = eventActions
     }
 }
 
@@ -365,7 +381,8 @@ struct ScheduledEvent: Identifiable, Hashable, Codable {
     let id: UUID
     var title: String
     var petID: UUID?
-    var food: FoodEventData
+    var food: FoodEventData?
+    var eventType: CareEventType?
     var nextDueAt: Date?
     var schedule: ReminderSchedule?
     var calendar: Calendar
@@ -376,7 +393,8 @@ struct ScheduledEvent: Identifiable, Hashable, Codable {
         id: UUID = UUID(),
         title: String,
         petID: UUID?,
-        food: FoodEventData,
+        food: FoodEventData? = nil,
+        eventType: CareEventType? = nil,
         nextDueAt: Date?,
         schedule: ReminderSchedule? = nil,
         calendar: Calendar = .current,
@@ -387,6 +405,7 @@ struct ScheduledEvent: Identifiable, Hashable, Codable {
         self.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         self.petID = petID
         self.food = food
+        self.eventType = eventType
         self.nextDueAt = nextDueAt
         self.schedule = schedule
         self.calendar = calendar
@@ -394,6 +413,10 @@ struct ScheduledEvent: Identifiable, Hashable, Codable {
         self.updatedAt = updatedAt
     }
 
+    var type: CareEventType { eventType ?? .food }
+    var data: CareEventData? {
+        switch type { case .food: food.map(CareEventData.food); case .litter: .litter(LitterEventData()); case .medicine: nil }
+    }
     var isActive: Bool { nextDueAt != nil }
 }
 
@@ -429,7 +452,7 @@ struct UserSettings: Hashable {
         guard let eventType,
               let override = eventTypeNotificationPreferences.first(where: { $0.eventType == eventType })
         else {
-            return globalNotificationPreferences
+            return .defaults
         }
 
         return override.preferences

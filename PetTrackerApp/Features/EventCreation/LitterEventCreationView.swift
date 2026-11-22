@@ -3,6 +3,8 @@ import SwiftUI
 struct LitterEventCreationView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var store: PetCareStore
+    @State private var isRecurring = false
+    @State private var recurrence = ScheduledEventEditDraft()
     @StateObject private var viewModel = LitterEventFormViewModel()
 
     var body: some View {
@@ -11,6 +13,7 @@ struct LitterEventCreationView: View {
                 DatePicker("Time", selection: $viewModel.timestamp)
             }
 
+            RecurringEventFields(isRecurring: $isRecurring, draft: $recurrence)
             Section {
                 Label("Household litter box cleaning", systemImage: "tray")
                     .foregroundStyle(.secondary)
@@ -20,8 +23,12 @@ struct LitterEventCreationView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
-                    if store.saveCareEventAndRefresh(viewModel.makeEvent()) { dismiss() }
+                    let saved = isRecurring
+                        ? store.saveScheduledEventsAndRefresh(recurrence.schedules(for: [viewModel.makeEvent()], pets: store.pets))
+                        : store.saveCareEventAndRefresh(viewModel.makeEvent())
+                    if saved { dismiss() }
                 }
+                .disabled(isRecurring && recurrence.schedules(for: [viewModel.makeEvent()], pets: store.pets).isEmpty)
                 .accessibilityIdentifier("litterCreation.save")
             }
         }

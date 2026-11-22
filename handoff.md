@@ -11,7 +11,7 @@ We are continuing an iOS SwiftUI app in this repo. Please read README.md, design
 ## Project Snapshot
 
 - App: native iOS SwiftUI pet care tracker.
-- Current milestone: Stages 0 through 6 are complete. Functionality Stages 6.2–6.3 implement reminder recurrence deletion and automatic food schedules. Stage 6.1 event history actions and combined Stage 6.4 physical-device verification remain.
+- Current milestone: Stages 0 through 6 are complete. Functionality Stages 6.2–6.3 implement reminder recurrence deletion and automatic food and litter schedules. Stage 6.1 event history actions and combined Stage 6.4 physical-device verification remain.
 - Persistence: SwiftData for app data, UserDefaults for device-local notification settings.
 - Sync: explicit CloudKit is enabled in signed Debug builds for `iCloud.com.tammie.PetTrackerApp`; Release remains local-only until production schema deployment. See sync-design.md. Future multi-user household sharing remains an architectural goal.
 - Scope: cats/pets, food events, medicine events, litter events, health history, reminders, saved food/medicine options, local notifications, focused settings.
@@ -27,10 +27,10 @@ We are continuing an iOS SwiftUI app in this repo. Please read README.md, design
 - Saved food and medicine option management.
 - Medicine reminder autoqueue, recurrence logic, completion, ignore-until, mute, delete, and completed history.
 - Active reminder rows open the editor. Confirmed deletion can skip one recurring occurrence or delete the series and its completed reminder history while retaining logged care events.
-- Food-only automatic event schedules create deterministic, timestamp-correct care events on the next app/sync processing pass without reminders or notifications.
+- Automatic food and litter event schedules create deterministic, timestamp-correct care events on the next app/sync processing pass without reminders or notifications.
 - Stage 5.10 adds verified pet name/calorie-goal editing, general reminder creation/editing, Events +/confirmed deletion, and inline food/medication option creation.
 - Reminder-to-event completion that can log care events.
-- Local notification scheduling with global and per-event-type presentation settings.
+- Local notification scheduling with device-local per-event overrides; global presentation is controlled in iPhone Settings.
 - Badge count support for overdue active reminders.
 - Debug-only Settings > Development > Reset and Reseed Local Data.
 
@@ -193,3 +193,23 @@ Signed Debug builds use CloudKit Development; Release remains local-only until p
 - Due schedules materialize after launch/foreground refresh, schedule saves, and successful sync imports. Catch-up is chronological and bounded to 100 occurrences per schedule per pass; deleting a schedule leaves generated events.
 - Final regression on 2026-09-15 passed all 119 unit/persistence/sync tests and all 23 UI tests. The result bundles are recorded in `plan.md`.
 - Stage 6.1 event archive/restore/duplicate remains planned. Stage 6.4 still includes combined physical-iPhone upgrade/notification verification after Stage 6.1.
+
+## Home interaction updates (2026-11-22)
+
+The user updated the physical iPhone and confirmed existing data remained intact before this work.
+
+- Home care/health rows no longer navigate on tap; left swipe offers Edit and confirmed Delete.
+- Home reminder rows offer Edit/Delete on left swipe and Skip Instance on right swipe. Skipping advances the recurring due occurrence (or removes a one-off) without completion history or a logged event. Delete uses the same occurrence/series confirmation as Reminders.
+- Recent includes every past care/health entry within 24 hours, extended to the latest 10 entries when needed, newest first with local-day headings. This supersedes Stage 5.9's latest-per-category/seven-day policy and Recent navigation links.
+- Health deletion uses the existing local transaction and sync tombstone path. No schema change or reseeding is needed.
+- Verification: build, all 123 unit/persistence/sync tests, and four focused UI workflows passed; evidence and initial test failures are recorded in plan.md. The Xcode shared scheme was already untracked when this work began; preserve it.
+
+## November 22, 2026: Current screen refinement
+
+Home interaction changes and the Events/Reminders/Notifications refinement are included in the follow-up commit after `7da7747`. The prior build was installed on the user's phone with data intact; these newer changes have not been installed on the phone.
+
+Events + now sits beside the category heading. Food and litter creation can enable Recurring; schedules are managed in the initially collapsed Recurring section above the event log. Reminders has one inline + and no Mode selector. Optional Create Events entries support multiple types and pets; household entries log at first completion, and per-pet actions log together. Partially completed definitions retain their exact stored payloads. Settings > Notifications contains daily reminder time followed by per-type Use default overrides; global presentation is controlled through iPhone Settings.
+
+Additive optional SwiftData fields retain legacy records. Sync envelope format 2 protects new action bundles and litter schedules from lossy interpretation by older clients. Update all syncing devices before using the new payloads. The 131-test unit suite passes, including an actual pre-change public simulator database-copy upgrade without reset. See plan.md for UI verification results.
+
+Final verification: 131 unit tests and all 26 UI workflows pass across the full run plus focused reruns after fixes. Build and whitespace checks pass. Fixed the confirmation swipe animation crash as well as form keyboard/hit-area issues. Updated design/README/sync notes and plan evidence. The refinement is committed; the phone has not been updated with it.

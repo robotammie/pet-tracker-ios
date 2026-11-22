@@ -80,6 +80,7 @@
 		AA1000000000000000000008 /* SyncJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000000000000000000008 /* SyncJournal.swift */; };
 		AA1000000000000000000009 /* CloudKitTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000000000000000000009 /* CloudKitTransport.swift */; };
 		AA100000000000000000000A /* SyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100000000000000000000A /* SyncTests.swift */; };
+		D01100000000000000000001 /* ScheduledEventEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D01100000000000000000002; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -178,6 +179,7 @@
 		BB1000000000000000000008 /* SyncJournal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sync/SyncJournal.swift; sourceTree = "<group>"; };
 		BB1000000000000000000009 /* CloudKitTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sync/CloudKitTransport.swift; sourceTree = "<group>"; };
 		BB100000000000000000000A /* SyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncTests.swift; sourceTree = "<group>"; };
+		D01100000000000000000002 /* ScheduledEventEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetTrackerApp/Features/Events/ScheduledEventEditorView.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 		DD0000000000000000000001 /* PetTrackerApp */ = {
@@ -222,6 +224,7 @@
 				BB0000000000000000000043 /* SavedOptionEditorView.swift */,
 				BB0000000000000000000008 /* HomeView.swift */,
 				BB0000000000000000000009 /* EventListView.swift */,
+                D01100000000000000000002 /* ScheduledEventEditorView.swift */,
 				B70000000000000000000007 /* MedicationTimingAlert.swift */,
 				B70000000000000000000005 /* MedicationDoseIntervalFields.swift */,
 				B70000000000000000000002 /* CareEventEditorView.swift */,
@@ -494,6 +497,7 @@
 				AA0000000000000000000042 /* SavedOptionEditorView.swift in Sources */,
 				AA0000000000000000000008 /* HomeView.swift in Sources */,
 				AA0000000000000000000009 /* EventListView.swift in Sources */,
+                D01100000000000000000001 /* ScheduledEventEditorView.swift in Sources */,
 				A70000000000000000000007 /* MedicationTimingAlert.swift in Sources */,
 				A70000000000000000000005 /* MedicationDoseIntervalFields.swift in Sources */,
 				A70000000000000000000002 /* CareEventEditorView.swift in Sources */,

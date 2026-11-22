@@ -3,6 +3,24 @@ import XCTest
 @testable import PetTrackerApp
 
 final class SwiftDataPersistenceTests: XCTestCase {
+    func testPreBundlePublicStoreCopyUpgradesWithoutReset() throws {
+        let source = URL(fileURLWithPath: "/tmp/pettracker-pre-bundle-public-fixture")
+        guard FileManager.default.fileExists(atPath: source.appendingPathComponent("UITests.store").path) else {
+            throw XCTSkip("Optional pre-upgrade public simulator fixture is not available")
+        }
+        let copy = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: copy) }
+        try FileManager.default.copyItem(at: source, to: copy)
+        let container = try LocalPersistence.makeContainer(url: copy.appendingPathComponent("UITests.store"))
+        let context = ModelContext(container)
+        XCTAssertEqual(try SwiftDataPetRepository(context: context).listPets().count, 2)
+        let reminders = try SwiftDataReminderRepository(context: context).listReminders(includeMuted: true)
+        XCTAssertEqual(reminders.count, 1)
+        XCTAssertEqual(reminders.first?.title, "Home reminder")
+        XCTAssertNil(reminders.first?.eventActions)
+        XCTAssertTrue(try SwiftDataCareEventRepository(context: context).listEvents().isEmpty)
+    }
+
     func testPetRepositoryPersistsPet() throws {
         let context = try makeContext()
         let repository = SwiftDataPetRepository(context: context)

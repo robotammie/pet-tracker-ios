@@ -80,6 +80,14 @@ final class SwiftDataHealthEntryRepository: HealthEntryRepository {
         }
     }
 
+    func deleteHealthEntry(id: UUID) throws {
+        let records = try context.fetch(FetchDescriptor<HealthEntryRecord>())
+        for record in records where record.id == id { context.delete(record) }
+        guard savesImmediately else { return }
+        do { try context.save() }
+        catch { context.rollback(); throw error }
+    }
+
     func saveHealthEntry(_ entry: HealthEntry) throws {
         let records = try context.fetch(FetchDescriptor<HealthEntryRecord>())
         if let record = records.first(where: { $0.id == entry.id }) {

@@ -103,6 +103,7 @@ final class ReminderRecord {
     @Attribute(.unique) var id: UUID
     var title: String
     var modeRawValue: String
+    var eventActionsJSON: String?
     var eventTypeRawValue: String?
     var eventPetID: UUID?
     var dueAt: Date
@@ -186,6 +187,7 @@ final class ReminderTargetRecord {
 final class ScheduledEventRecord {
     @Attribute(.unique) var id: UUID
     var title: String
+    var eventTypeRawValue: String?
     var petID: UUID?
     var createdAt: Date
     var updatedAt: Date

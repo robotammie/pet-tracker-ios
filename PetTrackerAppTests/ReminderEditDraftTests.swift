@@ -7,6 +7,44 @@ final class ReminderEditDraftTests: XCTestCase {
     let other = Pet(name: "Other")
     let now = Date(timeIntervalSince1970: 1_000_000)
 
+    func testMultiEventFormPreservesIDsPayloadsAndPartialCompletion() throws {
+        let food = ReminderEventAction(petID: pet.id, data: .food(FoodEventData(name: "Dinner", foodType: .wet, amount: 0.5, unit: .can, calories: 50, caloriesPerUnit: 100)))
+        let med = ReminderEventAction(petID: pet.id, data: .medicine(MedicineEventData(name: "Pill", dosage: 1, unit: "tablet")))
+        var form = ReminderFormDraft()
+        form.details.title = "Dinner and pill"
+        form.events = [food, med].map { ReminderEventActionDraft(type: $0.type, action: $0) }
+        let reminder = try XCTUnwrap(form.makeReminder(pets: [pet]))
+        XCTAssertNil(reminder.eventType)
+        XCTAssertEqual(reminder.eventActions, [food, med])
+        XCTAssertEqual(reminder.targets.map(\.petID), [pet.id])
+        var edit = ReminderFormDraft(reminder: reminder)
+        edit.details.title = "Edited"
+        XCTAssertEqual(edit.makeReminder(pets: [pet])?.eventActions, [food, med])
+        var partial = reminder
+        partial.targets[0].completedAt = now
+        var locked = ReminderFormDraft(reminder: partial)
+        locked.events = []
+        XCTAssertEqual(locked.makeReminder(pets: [pet])?.eventActions, [food, med])
+        XCTAssertEqual(locked.makeReminder(pets: [pet])?.targets, partial.targets)
+        edit.events[1].petID = nil
+        XCTAssertNil(edit.makeReminder(pets: [pet]))
+    }
+
+    func testLitterRecurrenceDraftCreatesStableHouseholdSchedule() throws {
+        var draft = ScheduledEventEditDraft(now: now)
+        draft.repeatStyle = .every
+        let event = CareEvent(type: .litter, petID: nil, startTime: now, data: .litter(LitterEventData()))
+        let first = try XCTUnwrap(draft.schedules(for: [event], pets: []).first)
+        let second = try XCTUnwrap(draft.schedules(for: [event], pets: []).first)
+        XCTAssertEqual(first.id, second.id)
+        XCTAssertEqual(first.type, .litter)
+        XCTAssertNil(first.food)
+        XCTAssertEqual(first.nextDueAt, now)
+        draft.hasEndDate = true
+        draft.endDate = now.addingTimeInterval(-1)
+        XCTAssertTrue(draft.schedules(for: [event], pets: []).isEmpty)
+    }
+
     func testPureReminderValidationAndEndDate() throws {
         var draft = ReminderEditDraft(now: now)
         XCTAssertNil(draft.makeReminder(pets: []))

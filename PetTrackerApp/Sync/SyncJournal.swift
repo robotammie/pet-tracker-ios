@@ -54,19 +54,20 @@ struct SyncState: Codable {
         }
         for completion in completions {
             for outcome in completion.outcomes {
-                guard let canonical = outcome.event else { continue }
-                let key = SyncPayload.event(canonical).key
-                if let envelope = records[key] {
-                    guard let payload = envelope.payload else { continue }
-                    // Preserve authored historical edits; otherwise use the canonical completion.
-                    guard
-                        completion.outcomes.contains(where: {
-                            $0.event.map(SyncPayload.event) == payload
-                                || $0.alternatives.map(SyncPayload.event).contains(payload)
-                        })
-                    else { continue }
+                for canonical in outcome.canonicalEvents {
+                    let key = SyncPayload.event(canonical).key
+                    if let envelope = records[key] {
+                        guard let payload = envelope.payload else { continue }
+                        // Preserve authored historical edits; otherwise use the canonical completion.
+                        guard
+                            completion.outcomes.contains(where: {
+                                $0.canonicalEvents.map(SyncPayload.event).contains(payload)
+                                    || $0.alternatives.map(SyncPayload.event).contains(payload)
+                            })
+                        else { continue }
+                    }
+                    payloads[key] = .event(canonical)
                 }
-                payloads[key] = .event(canonical)
             }
             var original = completion.original
             original.targets = original.targets.map { target in
@@ -199,8 +200,17 @@ final class SyncJournal {
                 guard let version = candidate.records[reminderKey]?.version else {
                     throw SyncError.invalidRecord
                 }
-                let outcomes: [SyncCompletion.Outcome]
-                if reminder.targets.isEmpty {
+                var outcomes: [SyncCompletion.Outcome]
+                if reminder.eventActions != nil {
+                    outcomes = reminder.targets.filter { pets.contains($0.petID) && $0.completedAt == nil }.map { target in
+                        .init(petID: target.petID, completedAt: time, event: nil,
+                              events: events.filter { $0.petID == target.petID })
+                    }
+                    let householdEvents = events.filter { $0.petID == nil }
+                    if reminder.targets.isEmpty || !householdEvents.isEmpty {
+                        outcomes.append(.init(petID: nil, completedAt: time, event: nil, events: householdEvents))
+                    }
+                } else if reminder.targets.isEmpty {
                     outcomes = [.init(petID: reminder.eventPetID, completedAt: time, event: events.first)]
                 } else {
                     outcomes = reminder.targets.filter { pets.contains($0.petID) && $0.completedAt == nil }

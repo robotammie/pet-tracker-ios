@@ -2,6 +2,51 @@ import XCTest
 @testable import PetTrackerApp
 
 final class ReminderActionServiceTests: XCTestCase {
+    func testMixedEventsCompletePerPetAndHouseholdOnlyOnceWithDistinctIDs() {
+        let a = UUID(), b = UUID()
+        let now = Date()
+        let actions = [
+            ReminderEventAction(petID: a, data: .food(FoodEventData(name: "Food", foodType: .dry, amount: 1, unit: .cup, calories: 10))),
+            ReminderEventAction(petID: a, data: .medicine(MedicineEventData(name: "Med", dosage: 1, unit: "pill"))),
+            ReminderEventAction(petID: b, data: .medicine(MedicineEventData(name: "Med", dosage: 2, unit: "pill"))),
+            ReminderEventAction(data: .litter(LitterEventData()))]
+        let reminder = Reminder(title: "Routine", mode: .reminderToEvent, eventType: nil, dueAt: now,
+            dueStyle: .timestamp, schedule: ReminderSchedule(recurrenceRule: .every(value: 1, unit: .day)),
+            targets: [ReminderTarget(petID: a), ReminderTarget(petID: b)], eventActions: actions)
+        let first = ReminderActionService.complete(reminder, completedPetIDs: [a], completionTime: now, createsEvent: true)
+        XCTAssertEqual(first.events.count, 3)
+        XCTAssertEqual(Set(first.events.map(\.id)).count, 3)
+        XCTAssertNil(first.historyReminder)
+        let second = ReminderActionService.complete(first.updatedReminder, completedPetIDs: [b], completionTime: now.addingTimeInterval(60), createsEvent: true)
+        XCTAssertEqual(second.events.count, 1)
+        XCTAssertEqual(second.events.first?.petID, b)
+        XCTAssertEqual(second.historyReminder?.eventActions, actions)
+        XCTAssertEqual(second.updatedReminder.eventActions, actions)
+        XCTAssertTrue(second.updatedReminder.targets.allSatisfy { $0.completedAt == nil })
+    }
+
+    func testMixedCompletionMedicationWarningCancelsAllEventWrites() {
+        let pet = Pet(name: "Cat")
+        let now = Date()
+        let data = MedicineEventData(name: "Med", dosage: 1, unit: "pill", savedOptionID: UUID(),
+            doseInterval: MedicationDoseInterval(minimumHours: 12, maximumHours: 12))
+        let previous = CareEvent(type: .medicine, petID: pet.id, startTime: now.addingTimeInterval(-3600), data: .medicine(data))
+        let actions = [ReminderEventAction(petID: pet.id, data: .medicine(data)), ReminderEventAction(data: .litter(LitterEventData()))]
+        let reminder = Reminder(title: "Routine", mode: .reminderToEvent, eventType: nil, dueAt: now,
+            dueStyle: .timestamp, targets: [ReminderTarget(petID: pet.id)], eventActions: actions)
+        let store = PetCareStore(pets: [pet], events: [previous], reminders: [reminder])
+        store.completeReminderNowAndRefresh(id: reminder.id, now: now)
+        XCTAssertNotNil(store.medicationTimingPrompt)
+        XCTAssertEqual(store.events, [previous])
+        XCTAssertEqual(store.reminders, [reminder])
+        store.cancelMedicationTimingWrite()
+        XCTAssertEqual(store.events, [previous])
+        store.completeReminderNowAndRefresh(id: reminder.id, now: now)
+        store.confirmMedicationTimingWrite(at: now)
+        XCTAssertEqual(store.events.count, 3)
+        XCTAssertEqual(store.reminders.first?.status, .completed)
+    }
+
     func testPartialCompletionKeepsReminderActiveAndCreatesSelectedPetEvent() {
         let appaID = UUID()
         let momoID = UUID()

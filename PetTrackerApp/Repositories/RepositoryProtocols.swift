@@ -39,4 +39,5 @@ protocol UserSettingsRepository {
 protocol HealthEntryRepository {
     func listHealthEntries() throws -> [HealthEntry]
     func saveHealthEntry(_ entry: HealthEntry) throws
+    func deleteHealthEntry(id: UUID) throws
 }

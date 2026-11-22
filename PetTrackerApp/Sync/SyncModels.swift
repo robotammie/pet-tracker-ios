@@ -25,6 +25,9 @@ enum SyncIdentity {
     static func event(_ reminder: Reminder, petID: UUID?) -> UUID {
         uuid("event/" + occurrence(reminder) + "/" + (petID?.uuidString ?? "household"))
     }
+    static func event(_ reminder: Reminder, actionID: UUID) -> UUID {
+        uuid("event-action/" + occurrence(reminder) + "/" + actionID.uuidString)
+    }
     static func scheduledEvent(scheduleID: UUID, scheduledAt: Date) -> UUID {
         uuid("scheduled-event/\(scheduleID.uuidString)/\(scheduledAt.timeIntervalSince1970.bitPattern)")
     }
@@ -60,6 +63,8 @@ struct SyncCompletion: Codable, Hashable {
         var completedAt: Date
         var event: CareEvent?
         var alternatives: [CareEvent] = []
+        var events: [CareEvent]?
+        var canonicalEvents: [CareEvent] { events ?? event.map { [$0] } ?? [] }
         var key: String { petID?.uuidString ?? "household" }
     }
     var original: Reminder
@@ -83,11 +88,11 @@ struct SyncCompletion: Codable, Hashable {
         result.outcomes = grouped.values.compactMap { values in
             var canonical = values.min { a, b in
                 if a.completedAt != b.completedAt { return a.completedAt < b.completedAt }
-                let left = (try? SyncCoding.encode(a.event).base64EncodedString()) ?? ""
-                let right = (try? SyncCoding.encode(b.event).base64EncodedString()) ?? ""
+                let left = (try? SyncCoding.encode(a.canonicalEvents).base64EncodedString()) ?? ""
+                let right = (try? SyncCoding.encode(b.canonicalEvents).base64EncodedString()) ?? ""
                 return left < right
             }
-            let candidates = values.flatMap { $0.alternatives + ($0.event.map { [$0] } ?? []) }
+            let candidates = values.flatMap { $0.alternatives + $0.canonicalEvents }
             canonical?.alternatives = Array(Set(candidates)).sorted {
                 ((try? SyncCoding.encode($0).base64EncodedString()) ?? "")
                     < ((try? SyncCoding.encode($1).base64EncodedString()) ?? "")
@@ -127,6 +132,15 @@ enum SyncPayload: Codable, Hashable {
             "completion-" + SyncIdentity.uuid(SyncIdentity.occurrence(value.original)).uuidString
         }
     }
+    var requiredFormatVersion: Int {
+        switch self {
+        case .reminder(let reminder): reminder.eventActions == nil ? 1 : 2
+        case .completion(let completion): completion.original.eventActions == nil ? 1 : 2
+        case .skip(let skip): skip.original.eventActions == nil ? 1 : 2
+        case .schedule(let schedule): schedule.type == .food ? 1 : 2
+        default: 1
+        }
+    }
     var normalized: Self {
         func clean(_ value: String) -> String { value.trimmingCharacters(in: .whitespacesAndNewlines) }
         func optional(_ value: String?) -> String? { value.map(clean).flatMap { $0.isEmpty ? nil : $0 } }
@@ -162,6 +176,9 @@ enum SyncPayload: Codable, Hashable {
         case .reminder(var value):
             value.title = clean(value.title)
             value.eventData = value.eventData.map(data)
+            value.eventActions = value.eventActions?.map { action in
+                var action = action; action.data = data(action.data); return action
+            }
             value.targets = value.targets.map { target in
                 var target = target
                 target.eventData = target.eventData.map(data)
@@ -174,7 +191,7 @@ enum SyncPayload: Codable, Hashable {
             return .reminder(value)
         case .schedule(var value):
             value.title = clean(value.title)
-            value.food.name = clean(value.food.name)
+            if let food = value.food { value.food?.name = clean(food.name) }
             if var schedule = value.schedule {
                 schedule.recurrenceRule = rule(schedule.recurrenceRule)
                 value.schedule = schedule
@@ -216,8 +233,13 @@ struct SyncEnvelope: Codable, Hashable {
     var calendar: Calendar?
     var payload: SyncPayload?  // nil is a durable tombstone, never a missing fetch result.
 
+    init(formatVersion: Int? = nil, key: String, version: SyncVersion, calendar: Calendar? = nil, payload: SyncPayload?) {
+        self.formatVersion = formatVersion ?? payload?.requiredFormatVersion ?? 1
+        self.key = key; self.version = version; self.calendar = calendar; self.payload = payload
+    }
+
     func validated() throws -> Self {
-        guard formatVersion == 1, payload == nil || payload?.key == key,
+        guard (1...2).contains(formatVersion), formatVersion >= (payload?.requiredFormatVersion ?? 1), payload == nil || payload?.key == key,
             ["pet-", "event-", "health-", "option-", "reminder-", "schedule-", "skip-", "completion-"].contains(
                 String(key.dropLast(36))),
             UUID(uuidString: String(key.suffix(36))) != nil
@@ -247,6 +269,7 @@ struct SyncEnvelope: Codable, Hashable {
         var winner = try preferred()
         if case .completion(let a) = left.payload, case .completion(let b) = right.payload {
             winner.payload = .completion(a.merging(b)).normalized
+            winner.formatVersion = max(winner.formatVersion, winner.payload?.requiredFormatVersion ?? 1)
         }
         return winner
     }
@@ -363,7 +386,17 @@ extension SyncPayload {
                     && finite(value.ignoredUntil) && finite(value.schedule?.endDate)
                     && Set(value.targets.map(\.petID)).count == value.targets.count)
             try rule(value.schedule?.recurrenceRule)
-            try require(value.mode != .reminderToEvent || value.eventType != nil)
+            try require(value.mode != .reminderToEvent || value.eventType != nil || value.eventActions != nil)
+            if let actions = value.eventActions {
+                try require(value.mode == .reminderToEvent && !actions.isEmpty
+                    && Set(actions.map(\.id)).count == actions.count
+                    && Set(actions.compactMap(\.petID)) == Set(value.targets.map(\.petID)))
+                for action in actions {
+                    try data(action.data, type: action.type)
+                    try require(action.type != .medicine || action.petID != nil)
+                    try require(action.type != .litter || action.petID == nil)
+                }
+            }
             if let eventData = value.eventData {
                 try data(eventData, type: value.eventType ?? type(of: eventData))
             }
@@ -379,7 +412,9 @@ extension SyncPayload {
                     && finite(value.nextDueAt) && finite(value.createdAt) && finite(value.updatedAt)
                     && finite(value.schedule?.endDate)
             )
-            try data(.food(value.food), type: .food)
+            guard let payload = value.data else { throw SyncError.invalidRecord }
+            try require(value.type == .food || (value.type == .litter && value.petID == nil))
+            try data(payload, type: value.type)
             try rule(value.schedule?.recurrenceRule)
             if let endDate = value.schedule?.endDate, let nextDueAt = value.nextDueAt {
                 try require(nextDueAt <= endDate)
@@ -394,10 +429,18 @@ extension SyncPayload {
                 !value.outcomes.isEmpty && Set(value.outcomes.map(\.key)).count == value.outcomes.count)
             for outcome in value.outcomes {
                 try require(finite(outcome.completedAt))
-                for event in outcome.alternatives + (outcome.event.map { [$0] } ?? []) {
-                    try require(
-                        event.id == SyncIdentity.event(value.original, petID: outcome.petID)
+                try require(outcome.events == nil || value.original.eventActions != nil)
+                try require(Set(outcome.canonicalEvents.map(\.id)).count == outcome.canonicalEvents.count)
+                for event in outcome.alternatives + outcome.canonicalEvents {
+                    if let actions = value.original.eventActions {
+                        try require(actions.contains { action in
+                            event.id == SyncIdentity.event(value.original, actionID: action.id)
+                                && event.type == action.type && event.petID == action.petID
+                        } && event.petID == outcome.petID)
+                    } else {
+                        try require(event.id == SyncIdentity.event(value.original, petID: outcome.petID)
                             && event.petID == outcome.petID && event.type == value.original.eventType)
+                    }
                     try SyncPayload.event(event).validate()
                 }
             }
