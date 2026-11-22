@@ -101,9 +101,29 @@ struct SyncState: Codable {
                 payloads[key] = .reminder(result.updatedReminder)
             }
         }
+        let skips = payloads.values.compactMap { value -> SyncReminderSkip? in
+            if case .skip(let skip) = value { return skip }
+            return nil
+        }.sorted { SyncIdentity.occurrence($0.original) < SyncIdentity.occurrence($1.original) }
+        for skip in skips {
+            let key = SyncPayload.reminder(skip.original).key
+            guard records[key]?.payload != nil,
+                  case .reminder(var reminder) = payloads[key],
+                  reminder.dueAt == skip.original.dueAt,
+                  let nextDueAt = skip.nextDueAt else { continue }
+            reminder.dueAt = nextDueAt
+            reminder.completedAt = nil
+            reminder.ignoredUntil = nil
+            reminder.targets = reminder.targets.map {
+                ReminderTarget(petID: $0.petID, eventData: $0.eventData)
+            }
+            payloads[key] = .reminder(reminder)
+        }
         payloads = payloads.filter {
-            if case .completion = $0.value { return false }
-            return true
+            switch $0.value {
+            case .completion, .skip: false
+            default: true
+            }
         }
         return SyncSnapshot(payloads: payloads)
     }
@@ -120,6 +140,7 @@ final class SyncJournal {
     private let url: URL
     private var preparedURL: URL { url.appendingPathExtension("prepared") }
     private var stagedCompletion: (Reminder, Set<UUID>, Date, [CareEvent])?
+    private var stagedSkip: SyncReminderSkip?
 
     init(url: URL, initial: SyncSnapshot, scope: SyncScope = .personal) throws {
         self.url = url
@@ -158,6 +179,10 @@ final class SyncJournal {
         stagedCompletion = (reminder, pets, time, events)
     }
 
+    func stageSkip(_ reminder: Reminder, nextDueAt: Date?) {
+        stagedSkip = SyncReminderSkip(original: reminder, nextDueAt: nextDueAt)
+    }
+
     func transaction(context: ModelContext, action: () throws -> Void) throws {
         try recover(current: Self.snapshot(context: context))
         var saved = false
@@ -194,6 +219,11 @@ final class SyncJournal {
                 ignored = [reminderKey, "reminder-" + SyncIdentity.history(reminder).uuidString]
             }
             stagedCompletion = nil
+            if let stagedSkip {
+                let payload = SyncPayload.skip(stagedSkip)
+                try candidate.set(payload, key: payload.key)
+            }
+            stagedSkip = nil
             try candidate.capture(snapshot, ignoring: ignored)
             let desired = candidate.projectedSnapshot()
             if desired != snapshot { try Self.apply(desired, context: context) }
@@ -206,6 +236,7 @@ final class SyncJournal {
             do { try commit(candidate) } catch { return }
         } catch {
             stagedCompletion = nil
+            stagedSkip = nil
             if !saved {
                 context.rollback()
                 try? FileManager.default.removeItem(at: preparedURL)
@@ -289,7 +320,8 @@ final class SyncJournal {
             health: SwiftDataHealthEntryRepository(context: context).listHealthEntries(),
             options: SwiftDataSavedEventOptionRepository(context: context).listSavedOptions(
                 includeDeleted: true),
-            reminders: SwiftDataReminderRepository(context: context).listReminders(includeMuted: true))
+            reminders: SwiftDataReminderRepository(context: context).listReminders(includeMuted: true),
+            schedules: SwiftDataScheduledEventRepository(context: context).listScheduledEvents())
     }
 
     static func apply(_ snapshot: SyncSnapshot, context: ModelContext) throws {
@@ -303,6 +335,7 @@ final class SyncJournal {
         try removeMissing(CareEventRecord.self) { "event-" + $0.id.uuidString }
         try removeMissing(HealthEntryRecord.self) { "health-" + $0.id.uuidString }
         try removeMissing(SavedEventOptionRecord.self) { "option-" + $0.id.uuidString }
+        try removeMissing(ScheduledEventRecord.self) { "schedule-" + $0.id.uuidString }
         let reminders = SwiftDataReminderRepository(context: context, savesImmediately: false)
         for record in try context.fetch(FetchDescriptor<ReminderRecord>())
         where snapshot.payloads["reminder-" + record.id.uuidString] == nil {
@@ -321,7 +354,10 @@ final class SyncJournal {
                 try SwiftDataSavedEventOptionRepository(context: context, savesImmediately: false)
                     .saveSavedOption(value)
             case .reminder(let value): try reminders.saveReminder(value)
-            case .completion: break
+            case .schedule(let value):
+                try SwiftDataScheduledEventRepository(context: context, savesImmediately: false)
+                    .saveScheduledEvent(value)
+            case .completion, .skip: break
             }
         }
     }

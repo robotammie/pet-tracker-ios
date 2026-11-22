@@ -28,7 +28,10 @@ struct PersistentRootView: View {
             .medicationTimingAlert(.main)
             .persistenceErrorBanner(onRetry: {
                 if didLoad {
-                    if store.refreshFromPersistence() { store.syncLocalNotifications() }
+                    if store.refreshFromPersistence() {
+                        store.materializeScheduledEvents()
+                        store.syncLocalNotifications()
+                    }
                 } else {
                     loadIfNeeded()
                 }
@@ -37,7 +40,10 @@ struct PersistentRootView: View {
             .task(id: scenePhase) {
                 loadIfNeeded()
                 guard scenePhase == .active, didLoad else { return }
-                if store.refreshFromPersistence() { store.syncLocalNotifications() }
+                if store.refreshFromPersistence() {
+                    store.materializeScheduledEvents()
+                    store.syncLocalNotifications()
+                }
                 configureSyncIfAvailable()
                 guard let syncCoordinator else { return }
                 while !Task.isCancelled {
@@ -69,6 +75,8 @@ struct PersistentRootView: View {
                 context: modelContext, savesImmediately: false)
             let reminderRepository = SwiftDataReminderRepository(
                 context: modelContext, savesImmediately: false)
+            let scheduledEventRepository = SwiftDataScheduledEventRepository(
+                context: modelContext, savesImmediately: false)
 
             store.configurePersistence(
                 petRepository: petRepository,
@@ -77,6 +85,7 @@ struct PersistentRootView: View {
                 reminderRepository: reminderRepository,
                 healthRepository: SwiftDataHealthEntryRepository(
                     context: modelContext, savesImmediately: false),
+                scheduledEventRepository: scheduledEventRepository,
                 performTransaction: { action in
                     try LocalPersistence.transaction(context: modelContext, action)
                 }
@@ -104,6 +113,7 @@ struct PersistentRootView: View {
                         try deleteAll(HealthEntryRecord.self)
                         try deleteAll(ReminderTargetRecord.self)
                         try deleteAll(ReminderRecord.self)
+                        try deleteAll(ScheduledEventRecord.self)
                         try deleteAll(SavedEventOptionRecord.self)
                         try deleteAll(CareEventRecord.self)
                         try deleteAll(PetRecord.self)
@@ -128,6 +138,7 @@ struct PersistentRootView: View {
 
             }
             guard store.refreshFromPersistence() else { return }
+            store.materializeScheduledEvents()
             defaults.set(true, forKey: "PetTrackerApp.didInitializeLocalStore")
             didLoad = true
             store.settings = settingsRepository.loadSettings()
@@ -170,10 +181,15 @@ struct PersistentRootView: View {
                     context: modelContext, savesImmediately: false),
                 healthRepository: SwiftDataHealthEntryRepository(
                     context: modelContext, savesImmediately: false),
+                scheduledEventRepository: SwiftDataScheduledEventRepository(
+                    context: modelContext, savesImmediately: false),
                 performTransaction: { action in try journal.transaction(context: modelContext, action: action)
                 })
             store.onReminderCompleted = { original, pets, time, events in
                 journal.stageCompletion(original, pets: pets, at: time, events: events)
+            }
+            store.onReminderOccurrenceSkipped = { original, nextDueAt in
+                journal.stageSkip(original, nextDueAt: nextDueAt)
             }
             store.onPersistenceChanged = { [weak coordinator] in coordinator?.requestSync() }
             store.requestSyncAction = { [weak coordinator] in coordinator?.requestSync() }
@@ -233,6 +249,7 @@ struct PersistentRootView: View {
                     try deleteAll(HealthEntryRecord.self)
                     try deleteAll(ReminderTargetRecord.self)
                     try deleteAll(ReminderRecord.self)
+                    try deleteAll(ScheduledEventRecord.self)
                     try deleteAll(SavedEventOptionRecord.self)
                     try deleteAll(CareEventRecord.self)
                     try deleteAll(PetRecord.self)

@@ -77,9 +77,11 @@ struct HomeView: View {
             ContentUnavailableView("No reminders due soon", systemImage: "bell.slash")
         } else {
             ForEach(reminders) { reminder in
-                ReminderSummaryRow(reminder: reminder, showsEventIcon: true) {
-                    store.completeReminderNowAndRefresh(id: reminder.id)
-                }
+                ReminderSummaryRow(
+                    reminder: reminder,
+                    showsEventIcon: true,
+                    onCompleteNow: { store.completeReminderNowAndRefresh(id: reminder.id) }
+                )
             }
         }
     }

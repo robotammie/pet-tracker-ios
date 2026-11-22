@@ -2,6 +2,79 @@ import XCTest
 @testable import PetTrackerApp
 
 final class RepositoryTests: XCTestCase {
+    func testDeletingRecurringOccurrenceAdvancesFromScheduledDueTimeWithoutHistory() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let dueAt = try XCTUnwrap(calendar.date(from: DateComponents(
+            timeZone: calendar.timeZone, year: 2026, month: 9, day: 15, hour: 8
+        )))
+        let reminder = Reminder(
+            title: "Feed cats",
+            mode: .pureReminder,
+            eventType: nil,
+            dueAt: dueAt,
+            dueStyle: .timestamp,
+            schedule: ReminderSchedule(recurrenceRule: .every(value: 1, unit: .day), endDate: nil)
+        )
+        let store = PetCareStore(reminders: [reminder], notificationScheduler: SilentNotificationScheduler())
+
+        XCTAssertTrue(store.deleteReminderOccurrenceAndRefresh(reminder, calendar: calendar))
+
+        XCTAssertEqual(store.reminders.count, 1)
+        XCTAssertEqual(store.reminders[0].id, reminder.id)
+        XCTAssertEqual(store.reminders[0].dueAt, calendar.date(byAdding: .day, value: 1, to: dueAt))
+        XCTAssertTrue(store.reminders[0].isActive)
+        XCTAssertTrue(store.reminders.filter { $0.status == .completed }.isEmpty)
+        XCTAssertTrue(store.events.isEmpty)
+    }
+
+    func testDeleteAllRemovesSeriesHistoryButKeepsLoggedEvents() {
+        let dueAt = Date(timeIntervalSince1970: 1_000)
+        let active = Reminder(
+            title: "Feed cats",
+            mode: .pureReminder,
+            eventType: nil,
+            dueAt: dueAt.addingTimeInterval(86_400),
+            dueStyle: .timestamp,
+            schedule: ReminderSchedule(recurrenceRule: .every(value: 1, unit: .day), endDate: nil)
+        )
+        let history = Reminder(
+            id: SyncIdentity.history(reminderID: active.id, dueAt: dueAt),
+            title: active.title,
+            mode: active.mode,
+            eventType: active.eventType,
+            dueAt: dueAt,
+            dueStyle: active.dueStyle,
+            status: .completed,
+            completedAt: dueAt
+        )
+        let unrelated = Reminder(
+            title: "Unrelated",
+            mode: .pureReminder,
+            eventType: nil,
+            dueAt: dueAt,
+            dueStyle: .timestamp,
+            status: .completed,
+            completedAt: dueAt
+        )
+        let event = CareEvent(
+            type: .litter,
+            petID: nil,
+            startTime: dueAt,
+            data: .litter(LitterEventData())
+        )
+        let store = PetCareStore(
+            events: [event],
+            reminders: [active, history, unrelated],
+            notificationScheduler: SilentNotificationScheduler()
+        )
+
+        XCTAssertTrue(store.deleteReminderSeriesAndRefresh(active))
+
+        XCTAssertEqual(store.reminders.map(\.id), [unrelated.id])
+        XCTAssertEqual(store.events.map(\.id), [event.id])
+    }
+
     func testInjectedUnitHostAndUITestArgumentsAlwaysUseIsolatedStorage() {
         XCTAssertTrue(UITestConfiguration.enabled(arguments: ["-uiTesting"], isTestHost: false))
         XCTAssertTrue(UITestConfiguration.enabled(arguments: [], isTestHost: true))

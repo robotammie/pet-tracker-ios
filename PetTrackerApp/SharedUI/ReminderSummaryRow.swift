@@ -6,6 +6,7 @@ struct ReminderSummaryRow: View {
     var now: Date = .now
     var showsEventIcon = false
     var rowAccessibilityIdentifier: String?
+    var onSelect: (() -> Void)?
     var onCompleteNow: (() -> Void)?
 
     var body: some View {
@@ -13,6 +14,33 @@ struct ReminderSummaryRow: View {
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
             : AnyLayout(HStackLayout(alignment: .top, spacing: 12))
         return layout {
+            if let onSelect {
+                Button(action: onSelect) {
+                    summaryContent
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens reminder editor")
+            } else {
+                summaryContent
+            }
+
+            if let onCompleteNow {
+                Button(action: onCompleteNow) {
+                    Image(systemName: "checkmark.circle")
+                        .font(.title2)
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Complete \(reminder.title) now")
+                .accessibilityHint(reminder.targets.count > 1 ? "Completes all remaining pets at the current time" : "Uses the current time")
+                .accessibilityIdentifier("reminder.completeNow.\(reminder.id.uuidString)")
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var summaryContent: some View {
+        HStack(alignment: .top, spacing: 12) {
             if showsEventIcon, let eventType = reminder.eventType {
                 Image(systemName: eventType.homeSystemImage)
                     .foregroundStyle(.secondary)
@@ -39,24 +67,12 @@ struct ReminderSummaryRow: View {
                     .compactMap { $0 }.joined(separator: " · "))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier(rowAccessibilityIdentifier ?? "")
-
-            if let onCompleteNow {
-                Button(action: onCompleteNow) {
-                    Image(systemName: "checkmark.circle")
-                        .font(.title2)
-                        .frame(minWidth: 44, minHeight: 44)
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Complete \(reminder.title) now")
-                .accessibilityHint(reminder.targets.count > 1 ? "Completes all remaining pets at the current time" : "Uses the current time")
-                .accessibilityIdentifier("reminder.completeNow.\(reminder.id.uuidString)")
             }
         }
-        .padding(.vertical, 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(rowAccessibilityIdentifier ?? "")
     }
 
     private var statusText: some View {

@@ -6,6 +6,7 @@ final class PetCareStore: ObservableObject {
     @Published var healthEntries: [HealthEntry]
     @Published var savedOptions: [SavedEventOption]
     @Published var reminders: [Reminder]
+    @Published var scheduledEvents: [ScheduledEvent]
     @Published var settings: UserSettings
     @Published var persistenceError: String?
     @Published var syncStatus = "On this device"
@@ -25,9 +26,11 @@ final class PetCareStore: ObservableObject {
     private var eventRepository: CareEventRepository?
     private var savedOptionRepository: SavedEventOptionRepository?
     private var reminderRepository: ReminderRepository?
+    private var scheduledEventRepository: ScheduledEventRepository?
     private let notificationScheduler: NotificationScheduling
     private var persistenceTransaction: ((() throws -> Void) throws -> Void)?
     var onReminderCompleted: ((Reminder, Set<UUID>, Date, [CareEvent]) -> Void)?
+    var onReminderOccurrenceSkipped: ((Reminder, Date?) -> Void)?
     var requestSyncAction: (() -> Void)?
     var allowsDevelopmentReset = true
     var onPersistenceChanged: (() -> Void)?
@@ -39,6 +42,7 @@ final class PetCareStore: ObservableObject {
         healthEntries: [HealthEntry] = [],
         savedOptions: [SavedEventOption] = [],
         reminders: [Reminder] = [],
+        scheduledEvents: [ScheduledEvent] = [],
         settings: UserSettings = .defaults,
         notificationScheduler: NotificationScheduling = LocalNotificationScheduler()
     ) {
@@ -47,6 +51,7 @@ final class PetCareStore: ObservableObject {
         self.healthEntries = healthEntries
         self.savedOptions = savedOptions
         self.reminders = reminders
+        self.scheduledEvents = scheduledEvents
         self.settings = settings
         self.notificationScheduler = notificationScheduler
     }
@@ -57,6 +62,7 @@ final class PetCareStore: ObservableObject {
         savedOptionRepository: SavedEventOptionRepository,
         reminderRepository: ReminderRepository,
         healthRepository: HealthEntryRepository? = nil,
+        scheduledEventRepository: ScheduledEventRepository? = nil,
         performTransaction: ((() throws -> Void) throws -> Void)? = nil
     ) {
         self.persistenceTransaction = performTransaction
@@ -65,6 +71,7 @@ final class PetCareStore: ObservableObject {
         self.eventRepository = eventRepository
         self.savedOptionRepository = savedOptionRepository
         self.reminderRepository = reminderRepository
+        self.scheduledEventRepository = scheduledEventRepository
     }
 
     @discardableResult
@@ -75,11 +82,13 @@ final class PetCareStore: ObservableObject {
             let loadedEvents = try eventRepository?.listEvents() ?? events
             let loadedOptions = try savedOptionRepository?.listSavedOptions(includeDeleted: true) ?? savedOptions
             let loadedReminders = try reminderRepository?.listReminders(includeMuted: true) ?? reminders
+            let loadedScheduledEvents = try scheduledEventRepository?.listScheduledEvents() ?? scheduledEvents
             let loadedHealth = try healthRepository?.listHealthEntries() ?? healthEntries
             pets = loadedPets
             events = loadedEvents
             savedOptions = loadedOptions
             reminders = loadedReminders
+            scheduledEvents = loadedScheduledEvents
             healthEntries = loadedHealth
             persistenceError = nil
             return true
@@ -392,6 +401,114 @@ final class PetCareStore: ObservableObject {
         return saved
     }
 
+    @discardableResult
+    func deleteReminderOccurrenceAndRefresh(_ reminder: Reminder, calendar: Calendar = .current) -> Bool {
+        guard let current = reminders.first(where: { $0.id == reminder.id && $0.isActive }),
+              current == reminder else {
+            persistenceError = "This reminder changed. Close and reopen it before deleting it."
+            return false
+        }
+
+        guard let schedule = current.schedule,
+              let nextDue = ReminderScheduler.nextDueDate(
+                after: current.dueAt,
+                schedule: schedule,
+                calendar: calendar
+              ) else {
+            return deleteReminderAndRefresh(id: current.id)
+        }
+
+        var next = current
+        next.dueAt = nextDue
+        next.completedAt = nil
+        next.ignoredUntil = nil
+        next.targets = current.targets.map {
+            ReminderTarget(petID: $0.petID, eventData: $0.eventData)
+        }
+        let saved = writePersistence {
+            if let reminderRepository { try reminderRepository.saveReminder(next) }
+            else { saveReminder(next) }
+            onReminderOccurrenceSkipped?(current, nextDue)
+        }
+        if saved { syncLocalNotifications() }
+        return saved
+    }
+
+    @discardableResult
+    func deleteReminderSeriesAndRefresh(_ reminder: Reminder) -> Bool {
+        guard let current = reminders.first(where: { $0.id == reminder.id && $0.isActive }),
+              current == reminder else {
+            persistenceError = "This reminder changed. Close and reopen it before deleting it."
+            return false
+        }
+
+        let ids = reminders.compactMap { candidate in
+            candidate.id == current.id || SyncIdentity.isHistory(candidate, of: current.id)
+                ? candidate.id
+                : nil
+        }
+        let saved = writePersistence {
+            for id in ids {
+                if let reminderRepository { try reminderRepository.deleteReminder(id: id) }
+                else { deleteReminder(id: id) }
+            }
+        }
+        if saved { syncLocalNotifications() }
+        return saved
+    }
+
+    @discardableResult
+    func saveScheduledEventAndRefresh(_ scheduledEvent: ScheduledEvent) -> Bool {
+        writePersistence {
+            if let scheduledEventRepository {
+                try scheduledEventRepository.saveScheduledEvent(scheduledEvent)
+            } else {
+                saveScheduledEvent(scheduledEvent)
+            }
+        }
+    }
+
+    @discardableResult
+    func deleteScheduledEventAndRefresh(id: UUID) -> Bool {
+        writePersistence {
+            if let scheduledEventRepository {
+                try scheduledEventRepository.deleteScheduledEvent(id: id)
+            } else {
+                deleteScheduledEvent(id: id)
+            }
+        }
+    }
+
+    @discardableResult
+    func materializeScheduledEvents(
+        through now: Date = .now,
+        limitPerSchedule: Int = 100,
+        calendar: Calendar? = nil
+    ) -> Bool {
+        let results = scheduledEvents
+            .filter { $0.nextDueAt.map { $0 <= now } ?? false }
+            .map {
+                ScheduledEventService.materialize(
+                    $0,
+                    through: now,
+                    limit: limitPerSchedule,
+                    calendar: calendar
+                )
+            }
+        guard !results.isEmpty else { return true }
+
+        return writePersistence {
+            for result in results {
+                try persistEvents(result.events)
+                if let scheduledEventRepository {
+                    try scheduledEventRepository.saveScheduledEvent(result.updatedSchedule)
+                } else {
+                    saveScheduledEvent(result.updatedSchedule)
+                }
+            }
+        }
+    }
+
     func syncLocalNotifications() {
         notificationScheduler.sync(reminders: reminders, settings: settings)
     }
@@ -416,6 +533,7 @@ final class PetCareStore: ObservableObject {
             healthEntries.removeAll()
             savedOptions.removeAll()
             reminders.removeAll()
+            scheduledEvents.removeAll()
             let preview = PetCareStore.preview
             pets = preview.pets
             events = preview.events
@@ -495,6 +613,18 @@ extension PetCareStore: ReminderRepository {
 
     func deleteReminder(id: UUID) {
         reminders.removeAll { $0.id == id }
+    }
+}
+
+extension PetCareStore: ScheduledEventRepository {
+    func listScheduledEvents() -> [ScheduledEvent] { scheduledEvents }
+
+    func saveScheduledEvent(_ scheduledEvent: ScheduledEvent) {
+        upsert(scheduledEvent, in: &scheduledEvents)
+    }
+
+    func deleteScheduledEvent(id: UUID) {
+        scheduledEvents.removeAll { $0.id == id }
     }
 }
 

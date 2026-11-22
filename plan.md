@@ -3,14 +3,18 @@
 This plan assumes the current direction in `design.md`: iOS native, SwiftUI-first, local/iCloud-owned data only, good architecture from the beginning, and enough explanation along the way for a developer new to mobile app work.
 
 ## Current Clarification Status
-No blocking product clarifications are needed before starting the app plan.
+No clarification blocks planning. Current Stage 6.1–6.3 decisions:
+- Archived care events are hidden from Events, Home Recent, pet history, and displayed calorie totals until restored.
+- The Events tab toolbar provides View Archived for the currently selected event type and pet filter. Archived rows can be restored or permanently deleted.
+- “Delete all” on a recurring reminder removes the active series and its completed reminder history.
+- Automatic scheduled events initially support food/automatic-feeder entries only. Medicine continues to require reminder completion or manual logging.
 
 Known choices:
 - Build iOS native only for v1.
 - Prefer SwiftUI.
 - Design the data layer so CloudKit/iCloud sync can be supported without rewriting the UI.
 - Add CloudKit after Stage 5 and a local-only polish pass.
-- Stage 6 reviewed managed SwiftData sync and selected the explicit CloudKit fallback, preserving the existing local schema and a future shared-database path. See sync-design.md.
+- Stage 6 reviewed managed SwiftData sync and selected the explicit CloudKit fallback with a future shared-database path. Stage 6.3 adds one tested additive SwiftData model for automatic schedules. See sync-design.md.
 - Treat food, litter, medicine, notifications, saved autofill options, pets, and settings as separate model concerns.
 - Keep v1 settings focused on notification preferences and the global day-only notification time.
 - Use hybrid notification settings: global controls first, with restrained per-event-type overrides.
@@ -787,6 +791,103 @@ Acceptance checks:
 - Concurrent reminder completion produces one logical completion/event and consistent per-pet state.
 - UI automation continues to use cloud-disabled test data; current unit/UI regression suites pass.
 - No server-side app state is introduced.
+
+## Stage 6.1: Event History Actions - Planned
+
+Goal: make logged events easier to manage from the Events tab without losing useful history accidentally.
+
+Tasks:
+- Add an optional `archivedAt` value to care events and their SwiftData/CloudKit representation. Keep the change backward compatible so existing local and synced events remain active.
+- Add an Archive swipe action to each event on the main Events page.
+- Hide archived events from the normal Events list, Home Recent, pet history, and displayed calorie totals.
+- Add View Archived to the Events tab toolbar. It shows archived events for the currently selected event type and pet filter, preserving the familiar Food/Medicine/Litter and pet context.
+- Give archived rows Restore and permanent Delete actions. Restore clears `archivedAt` and returns the event to normal history and totals.
+- Keep the existing main-page swipe Delete action and confirmation. Deletion remains permanent and leaves reminder completion history unchanged.
+- Add Duplicate to the event editor/action menu. Start from the historical event snapshot, assign a new event ID and creation time, and require a new event timestamp that defaults to now.
+- Run duplicated medicine events through the existing same-medication/same-cat timing warning and override flow before saving.
+- Ensure archive, restore, delete, and duplicate writes refresh visible history/calorie totals immediately and sync through the existing journal/tombstone path.
+
+Acceptance checks:
+- Archiving removes an event from normal history, Recent, pet history, and displayed totals without deleting its stored payload.
+- View Archived respects the selected event type and pet filter; Restore returns an event to the corresponding normal views and totals.
+- Deleting from the main Events page still requires confirmation and persists after relaunch/sync.
+- Duplicate preserves type, pet/household scope, and stored payload while using a new ID and user-selected timestamp.
+- Canceling archive/delete/duplicate leaves the original event unchanged.
+- Archive state and duplicated events converge without duplicates in two sync contexts.
+- Focused unit and UI tests pass before Stage 6.2 begins.
+
+Planning note: the current Events page already provides confirmed swipe deletion. This stage retains and regression-tests it while adding archive/restore and duplication.
+
+## Stage 6.2: Reminder Row Editing and Recurrence Deletion - Complete
+
+Goal: make reminder editing discoverable and let a recurring series skip one occurrence or stop future occurrences.
+
+Tasks:
+- Make selecting an active reminder row open the existing reminder editor. Retain the swipe Edit action as an alternate entry point.
+- Keep completed history read-only.
+- Replace immediate swipe deletion with a confirmation flow.
+- For a nonrecurring reminder, offer Delete Reminder.
+- For a recurring reminder, offer:
+    - Delete This Occurrence: remove/skip the displayed occurrence and advance the same series to its next due time without creating completion history or an event.
+    - Delete All: delete the active series, all completed history belonging to that series, and its pending local notifications. Care events previously created by completing the reminder remain independent historical events.
+- Calculate the next occurrence from the skipped occurrence's scheduled due time and existing calendar/recurrence rule so a late deletion does not shift the cadence to the deletion time.
+- Add or preserve a stable series identity on active and completed reminder records so Delete All can remove only history belonging to that series.
+- Use the existing sync write/tombstone rules so two devices cannot recreate a skipped occurrence or deleted series/history.
+
+Acceptance checks:
+- Tapping an active row opens its editor and Cancel makes no changes.
+- Deleting a single nonrecurring reminder removes it and its scheduled notification.
+- Deleting one recurring occurrence advances exactly once, creates no care event, and survives relaunch/sync.
+- Delete All removes the active series, its notifications, and its completed reminder history while retaining care events already logged from those completions.
+- Concurrent skip/edit/delete behavior converges deterministically in two sync contexts.
+- Focused unit and UI tests pass before Stage 6.3 begins.
+
+Implementation (2026-09-15): active reminder rows open the existing editor and retain swipe Edit. Deletion now confirms nonrecurring removal or offers Delete This Occurrence / Delete All for recurring reminders. A skipped occurrence advances from its stored due time and creates neither completion history nor a care event. Its deterministic sync record prevents a concurrent stale edit from restoring that due instant. Deterministic history identities let Delete All remove only the series history; care events remain independent. Existing journal tombstones make series deletion win concurrent edits and suppress completion replay.
+
+## Stage 6.3: Automatic Scheduled Events - Complete
+
+Goal: support events that are expected to happen automatically, such as an automatic feeder delivery, without showing a reminder or requiring completion.
+
+Architecture decision:
+- Model an automatic event schedule as its own synced domain entity rather than disguising it as an active reminder. It can reuse the reminder editor's event-payload and recurrence controls, but it has no notification, completion, ignore, mute, or completed-reminder history.
+- iOS does not guarantee that arbitrary app code runs at an exact scheduled minute. The app will materialize overdue occurrences on launch, foreground refresh, successful sync, and local schedule writes. Each created event records the intended scheduled timestamp even if materialization happens later.
+- Give each occurrence a deterministic identity derived from schedule ID plus scheduled timestamp. This prevents duplicate events when multiple devices materialize the same occurrence.
+
+Initial scope:
+- Add a Scheduled Events section and add/edit/delete controls in the Reminders tab.
+- Support timestamp recurrence and optional end dates using the existing recurrence rules and calendar semantics.
+- Reuse stored event payload snapshots so later saved-option edits do not rewrite a schedule unexpectedly.
+- Start with food schedules for automatic feeder use. Medicine remains reminder/manual logging because an unattended automatic write cannot present the medication timing warning or prove a dose was administered.
+- Materialize all unrecorded due occurrences in chronological order, with a bounded batch and resumable cursor for long periods away from the app.
+- Store last-materialized metadata and deterministic occurrence IDs in SwiftData and the versioned CloudKit envelope. Preserve offline operation and future household scope boundaries.
+- Clearly explain in the UI that an event may appear when the app next runs, but its logged time is the scheduled delivery time.
+
+Acceptance checks:
+- A due schedule creates one event with the scheduled timestamp and no reminder or notification.
+- Repeated foreground/sync processing and processing from two devices do not duplicate an occurrence.
+- Editing a schedule affects future occurrences only; past generated events retain their snapshots.
+- Deleting a schedule stops future generation without deleting events already created from it.
+- Offline missed occurrences catch up after the app runs again, in order, without shifting the recurrence cadence.
+- Existing reminder, event, medication-warning, local-notification, and CloudKit regression suites remain green.
+
+Implementation (2026-09-15): added a food-only `ScheduledEvent` domain entity, additive SwiftData record/repository, version-1 sync payload, journal mapping, and Reminders-tab add/edit/delete UI. Due occurrences materialize on launch, foreground refresh, successful sync, and schedule saves. The cursor advances chronologically in bounded, resumable batches using the stored calendar. Each generated event uses a deterministic schedule/timestamp identity and preserves its food snapshot and intended timestamp. Schedule deletion retains previously generated events.
+
+Final Stage 6.2–6.3 verification on 2026-09-15 covers the populated-store additive upgrade, persistence round trip, bounded catch-up, deterministic two-context deduplication, schedule deletion, occurrence skip, concurrent skip/edit, series-history deletion, and concurrent series-delete/edit behavior. The full unit suite passed **119 tests with 0 failures**; result `DerivedData/Logs/Test/Test-PetTrackerApp-2026.09.15_19-02-35--0700.xcresult`. The full UI suite passed **23 tests with 0 failures**, including reminder row editing, occurrence/series deletion, schedule creation, relaunch, and generated-event visibility; result `DerivedData/Logs/Test/Test-PetTrackerApp-2026.09.15_18-48-29--0700.xcresult`.
+
+## Stage 6.4: Functionality-Tweak Milestone Verification - Planned
+
+Goal: validate the three functionality stages together before release-readiness work.
+
+Tasks:
+- Run the app/test build and full unit suite after each stage; run focused UI tests for the changed workflow before moving on.
+- At milestone completion, run the full UI suite and a two-context sync regression covering archive/restore, reminder occurrence deletion, series deletion, and scheduled-event deduplication.
+- Verify on the physical iPhone that existing personal data survives the model upgrade and that local notifications are rescheduled correctly.
+- Update `design.md`, `handoff.md`, and user-facing developer notes to reflect final implemented behavior and any scope changes.
+
+Acceptance checks:
+- Existing populated local and CloudKit data upgrades without reset/reseed or loss.
+- All new actions persist across relaunch and converge across sync contexts.
+- Full unit/UI regressions pass before Stage 7 begins.
 
 ## Stage 7: Polish, Testing, and Release Readiness
 Goal: make v1 reliable enough for personal daily use.

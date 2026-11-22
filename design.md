@@ -77,7 +77,7 @@ Prefer an architecture that can support CloudKit from the beginning. If implemen
 - UI should be optimized for mobile viewing/use
 - Photos are not required for v1.
 
-## Current implementation boundary (reviewed 2026-09-13)
+## Current implementation boundary (reviewed 2026-09-15)
 
 Stages 0–5.10 are complete; the final build, 83 unit tests, and 21 UI tests passed. Litter icons now use `tray`. The pre-CloudKit updates below take precedence over older descriptions when they differ.
 
@@ -93,7 +93,9 @@ Step 6 must include Health records, preserve existing local history, prevent dup
 
 Sync execution update (2026-09-15): the developer account, signing team, app identifier, and Development CloudKit container are configured. Future multi-user/household sharing remains a product goal. Stable identities and account/database/record ownership remain behind repository/sync boundaries; sharing UI, invitations, and permissions remain future work. Data stays local and/or in users' iCloud, without app server-side state.
 
-Stage 6 implementation: explicit CloudKit transport over the unchanged local SwiftData schema, a durable offline journal with tombstones, deterministic completion reconciliation, and account/container/environment/zone scope boundaries. Signed Debug builds use the Development container; Release remains local-only until its schema is deployed. All app data, including Health, is mapped; notification preferences remain device-local. Foreground/import/account-change refresh and local notification rescheduling are implemented. No background push or sharing UI is included. See [sync-design.md](sync-design.md) for conflicts, durability, provisioning, live verification, and the future household-sharing path.
+Stage 6 implementation: explicit CloudKit transport over local SwiftData, a durable offline journal with tombstones, deterministic completion reconciliation, and account/container/environment/zone scope boundaries. Signed Debug builds use the Development container; Release remains local-only until its schema is deployed. All app data, including Health and automatic food schedules, is mapped; notification preferences remain device-local. Foreground/import/account-change refresh and local notification rescheduling are implemented. No background push or sharing UI is included. See [sync-design.md](sync-design.md) for conflicts, durability, provisioning, live verification, and the future household-sharing path.
+
+Stages 6.2–6.3 add direct active-reminder editing, confirmed recurrence deletion, and food-only automatic event schedules. Delete This Occurrence advances from the scheduled due time without completion history or a care event. Delete All removes the active series and its completed reminder history while retaining logged care events. Automatic schedules are separate synced entities: they create deterministic food events at their intended timestamps when the app next runs, without reminders or notifications. Stage 6.1 event archive/restore/duplicate work remains planned.
 
 ## Data
 ### pet
@@ -244,6 +246,8 @@ include relevant event info so it can autolog an event when marked complete.
 - Day-only notification morning display time should default to 9:00 AM.
 - Day-only morning display time should be customizable.
 - Overdue notifications stay visible until completed, ignored, or deleted.
+- Selecting an active reminder opens its editor; completed reminder history stays read-only.
+- Deleting a recurring reminder requires choosing between skipping the displayed occurrence and deleting the whole series. Skipping advances from the displayed due time. Deleting the series also removes its completed reminder history, while care events already logged from it remain.
 - Include an ignore option.
     - Ignore until: updates the next due date to a selected date/time.
 - Include a mute status.
@@ -252,6 +256,13 @@ include relevant event info so it can autolog an event when marked complete.
 - When completing a notification, the user may edit the completion time.
     - This supports cases where the user did the task earlier and is logging it later.
     - If the notification recurs, the edited completion time is used to calculate the next due date.
+
+### automatic scheduled event
+- A scheduled event is separate from a notification and has no alert, completion, ignore, mute, or reminder history.
+- The initial scope is saved food for automatic-feeder use, with household or one-pet scope, recurrence, and an optional end date.
+- iOS does not guarantee app execution at an exact minute. Due occurrences are created on launch, foreground refresh, successful sync, and schedule saves; the care event keeps the intended scheduled timestamp.
+- Occurrence IDs derive from schedule ID and scheduled timestamp so retries and multiple devices converge without duplicate events.
+- Editing affects future occurrences. Deleting stops future creation and retains previously created care events.
 
 ### user settings
 Initial settings should stay small and focused.
@@ -312,6 +323,7 @@ Notification preferences:
     - can be marked as done with the option to select done at time
     - can be ignored until a selected date/time
     - can be edited/deleted
+    - includes a Scheduled Events section for adding, editing, and deleting food schedules
 - Settings
     - notification preferences
     - default day-only notification time

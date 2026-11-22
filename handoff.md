@@ -5,13 +5,13 @@ Use this file to resume the project in a fresh Codex chat/session.
 ## Resume Prompt
 
 ```text
-We are continuing an iOS SwiftUI app in this repo. Please read README.md, design.md, plan.md, handoff.md, and sync-design.md, then inspect git status before making changes. Stages 0–5.10 are complete and committed. Stage 6 explicit CloudKit sync is implemented, provisioned for Development, and live-verified on a physical iPhone; the current Stage 6 changes are uncommitted. Preserve the completed work and verification evidence.
+We are continuing an iOS SwiftUI app in this repo. Please read README.md, design.md, plan.md, handoff.md, and sync-design.md, then inspect git status before making changes. Stages 0–6 and functionality Stages 6.2–6.3 are implemented; Stage 6.1 event history actions and Stage 6.4 milestone verification remain. Preserve the completed work and verification evidence.
 ```
 
 ## Project Snapshot
 
 - App: native iOS SwiftUI pet care tracker.
-- Current milestone: Stages 0 through 5.10 are complete and committed. Stage 6 implementation, Development provisioning, and live CloudKit validation are complete; final regressions and documentation closeout are complete; the changes remain uncommitted.
+- Current milestone: Stages 0 through 6 are complete. Functionality Stages 6.2–6.3 implement reminder recurrence deletion and automatic food schedules. Stage 6.1 event history actions and combined Stage 6.4 physical-device verification remain.
 - Persistence: SwiftData for app data, UserDefaults for device-local notification settings.
 - Sync: explicit CloudKit is enabled in signed Debug builds for `iCloud.com.tammie.PetTrackerApp`; Release remains local-only until production schema deployment. See sync-design.md. Future multi-user household sharing remains an architectural goal.
 - Scope: cats/pets, food events, medicine events, litter events, health history, reminders, saved food/medicine options, local notifications, focused settings.
@@ -26,6 +26,8 @@ We are continuing an iOS SwiftUI app in this repo. Please read README.md, design
 - Multi-pet food and medicine creation.
 - Saved food and medicine option management.
 - Medicine reminder autoqueue, recurrence logic, completion, ignore-until, mute, delete, and completed history.
+- Active reminder rows open the editor. Confirmed deletion can skip one recurring occurrence or delete the series and its completed reminder history while retaining logged care events.
+- Food-only automatic event schedules create deterministic, timestamp-correct care events on the next app/sync processing pass without reminders or notifications.
 - Stage 5.10 adds verified pet name/calorie-goal editing, general reminder creation/editing, Events +/confirmed deletion, and inline food/medication option creation.
 - Reminder-to-event completion that can log care events.
 - Local notification scheduling with global and per-event-type presentation settings.
@@ -177,8 +179,17 @@ The user reviewed the original-design gaps one by one and approved minimal pet a
 
 ## Stage 6 code preparation (2026-09-13)
 
-The user authorized Stage 6 while arranging an Apple developer account separately. The explicit CloudKit fallback is implemented behind repositories, preserving the unchanged local SwiftData schema. Read [sync-design.md](sync-design.md) before modifying sync; it defines scoped ownership, the version-1 wire contract, prepared-write recovery, tombstones, completion reconciliation, scheduling calendar, and future zone-wide household sharing.
+The user authorized Stage 6 while arranging an Apple developer account separately. The explicit CloudKit fallback is implemented behind repositories. Stage 6 originally preserved the local schema; Stage 6.3 later added `ScheduledEventRecord` through the tested additive SwiftData upgrade path. Read [sync-design.md](sync-design.md) before modifying sync; it defines scoped ownership, the version-1 wire contract, prepared-write recovery, tombstones, completion reconciliation, scheduling calendar, and future zone-wide household sharing.
 
 The original code-readiness build passed, with 111 unit tests and 22 UI tests. On 2026-09-15, the signed physical app saved the populated phone dataset to the real Development container. An isolated physical-device integration test then passed against live CloudKit with two independent local contexts, all synced categories, empty-context download, offline/reconnect, and concurrent partial reminder completion. Tests use public fixtures and isolated stores; preserve the ignored private SeedData.local.swift without reading, changing, or staging it.
 
 Signed Debug builds use CloudKit Development; Release remains local-only until production schema deployment. The iPhone 17 simulator account is blocked by an iCloud protected-key trust state (`waitfortrust`/`PCSNoPublicIdentity`), so its local app data was replaced with a verified copy of the phone dataset. That simulator limitation is not CloudKit evidence; the physical-device integration test is. Future sharing invitations/permissions/UI and background push remain outside Stage 6.
+
+## Stages 6.2–6.3 implementation notes
+
+- Active reminder rows open the existing editor; completed history remains read-only. Recurring delete confirmation offers a due-time-anchored occurrence skip or whole-series deletion. A deterministic synced skip record prevents a concurrent stale edit from recreating the skipped due instant. Delete All removes deterministic reminder history and pending notifications while keeping logged care events; tombstones win concurrent edits and completion records do not recreate the deleted series.
+- `ScheduledEvent`, `ScheduledEventRecord`, and their repository/sync mappings model food-only automatic schedules separately from reminders. Stored food snapshots, calendar semantics, a resumable `nextDueAt` cursor, and deterministic schedule/timestamp event IDs preserve timestamps and avoid duplicates across retries/devices.
+- The Reminders tab has a Scheduled Events section and a calendar/clock add button. Schedule add/edit/delete supports saved food, household or one pet, recurrence, and optional end date. The UI states that due events appear when the app next runs and retain their scheduled time.
+- Due schedules materialize after launch/foreground refresh, schedule saves, and successful sync imports. Catch-up is chronological and bounded to 100 occurrences per schedule per pass; deleting a schedule leaves generated events.
+- Final regression on 2026-09-15 passed all 119 unit/persistence/sync tests and all 23 UI tests. The result bundles are recorded in `plan.md`.
+- Stage 6.1 event archive/restore/duplicate remains planned. Stage 6.4 still includes combined physical-iPhone upgrade/notification verification after Stage 6.1.

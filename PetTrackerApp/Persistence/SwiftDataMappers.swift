@@ -339,6 +339,63 @@ enum SwiftDataMapper {
         return record
     }
 
+    static func scheduledEvent(from record: ScheduledEventRecord) -> ScheduledEvent? {
+        guard let foodType = FoodType(rawValue: record.foodTypeRawValue),
+              let unit = FoodUnit(rawValue: record.foodUnitRawValue),
+              let calendar = try? JSONDecoder().decode(
+                Calendar.self,
+                from: Data(record.calendarJSON.utf8)
+              ) else { return nil }
+        let rule = recurrenceRule(
+            kind: record.recurrenceKind,
+            value: record.recurrenceValue,
+            unitRawValue: record.recurrenceUnitRawValue,
+            timesOfDayMinutes: record.timesOfDayMinutes
+        )
+        let schedule = rule == nil && record.endDate == nil
+            ? nil
+            : ReminderSchedule(recurrenceRule: rule, endDate: record.endDate)
+        return ScheduledEvent(
+            id: record.id,
+            title: record.title,
+            petID: record.petID,
+            food: FoodEventData(
+                name: record.foodName,
+                foodType: foodType,
+                amount: record.foodAmount,
+                unit: unit,
+                calories: record.foodCalories,
+                caloriesPerUnit: record.foodCaloriesPerUnit
+            ),
+            nextDueAt: record.nextDueAt,
+            schedule: schedule,
+            calendar: calendar,
+            createdAt: record.createdAt,
+            updatedAt: record.updatedAt
+        )
+    }
+
+    static func update(_ record: ScheduledEventRecord, with value: ScheduledEvent) {
+        record.title = value.title
+        record.petID = value.petID
+        record.createdAt = value.createdAt
+        record.updatedAt = value.updatedAt
+        record.nextDueAt = value.nextDueAt
+        record.calendarJSON = (try? String(data: JSONEncoder().encode(value.calendar), encoding: .utf8)) ?? "{}"
+        record.foodName = value.food.name
+        record.foodTypeRawValue = value.food.foodType.rawValue
+        record.foodAmount = value.food.amount
+        record.foodUnitRawValue = value.food.unit.rawValue
+        record.foodCalories = value.food.calories
+        record.foodCaloriesPerUnit = value.food.caloriesPerUnit
+        record.recurrenceKind = nil
+        record.recurrenceValue = nil
+        record.recurrenceUnitRawValue = nil
+        record.timesOfDayMinutes = nil
+        record.endDate = value.schedule?.endDate
+        apply(value.schedule?.recurrenceRule, toScheduledEvent: record)
+    }
+
     private static func reminderTargets(from record: ReminderRecord, targetRecords: [ReminderTargetRecord]) -> [ReminderTarget] {
         let targets = targetRecords
             .map(reminderTarget(from:))
@@ -420,6 +477,21 @@ enum SwiftDataMapper {
     }
 
     private static func apply(_ rule: RecurrenceRule?, toReminder record: ReminderRecord) {
+        switch rule {
+        case let .every(value, unit):
+            record.recurrenceKind = "every"
+            record.recurrenceValue = value
+            record.recurrenceUnitRawValue = unit.rawValue
+        case let .timesPerDay(count, times):
+            record.recurrenceKind = "timesPerDay"
+            record.recurrenceValue = count
+            record.timesOfDayMinutes = encodeMinutes(times)
+        case nil:
+            break
+        }
+    }
+
+    private static func apply(_ rule: RecurrenceRule?, toScheduledEvent record: ScheduledEventRecord) {
         switch rule {
         case let .every(value, unit):
             record.recurrenceKind = "every"

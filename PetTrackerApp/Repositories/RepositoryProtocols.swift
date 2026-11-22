@@ -25,6 +25,12 @@ protocol ReminderRepository {
     func deleteReminder(id: UUID) throws
 }
 
+protocol ScheduledEventRepository {
+    func listScheduledEvents() throws -> [ScheduledEvent]
+    func saveScheduledEvent(_ scheduledEvent: ScheduledEvent) throws
+    func deleteScheduledEvent(id: UUID) throws
+}
+
 protocol UserSettingsRepository {
     func loadSettings() -> UserSettings
     func saveSettings(_ settings: UserSettings)

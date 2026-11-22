@@ -227,14 +227,20 @@ final class SyncCoordinator {
                 try Task.checkCancellation()
                 try journal.receive(remote, context: context)
                 try journal.markCloudInitialized(context: context)
-                if store?.refreshFromPersistence() == true { store?.syncLocalNotifications() }
+                if store?.refreshFromPersistence() == true {
+                    store?.materializeScheduledEvents()
+                    store?.syncLocalNotifications()
+                }
                 let pending = try journal.pending(context: context)
                 if pending.isEmpty && !requested { break }
                 let reply = try await transport.send(pending, scope: journal.state.scope)
                 try journal.acknowledge(reply.acknowledged, context: context)
                 if !reply.conflicts.isEmpty {
                     try journal.receive(reply.conflicts, context: context)
-                    if store?.refreshFromPersistence() == true { store?.syncLocalNotifications() }
+                    if store?.refreshFromPersistence() == true {
+                        store?.materializeScheduledEvents()
+                        store?.syncLocalNotifications()
+                    }
                 }
             }
             let remaining = try journal.pending(context: context)

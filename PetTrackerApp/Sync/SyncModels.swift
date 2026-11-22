@@ -16,8 +16,17 @@ enum SyncIdentity {
         "\(reminder.id.uuidString)/\(reminder.dueAt.timeIntervalSince1970.bitPattern)"
     }
     static func history(_ reminder: Reminder) -> UUID { uuid("history/" + occurrence(reminder)) }
+    static func history(reminderID: UUID, dueAt: Date) -> UUID {
+        uuid("history/\(reminderID.uuidString)/\(dueAt.timeIntervalSince1970.bitPattern)")
+    }
+    static func isHistory(_ reminder: Reminder, of reminderID: UUID) -> Bool {
+        reminder.status == .completed && reminder.id == history(reminderID: reminderID, dueAt: reminder.dueAt)
+    }
     static func event(_ reminder: Reminder, petID: UUID?) -> UUID {
         uuid("event/" + occurrence(reminder) + "/" + (petID?.uuidString ?? "household"))
+    }
+    static func scheduledEvent(scheduleID: UUID, scheduledAt: Date) -> UUID {
+        uuid("scheduled-event/\(scheduleID.uuidString)/\(scheduledAt.timeIntervalSince1970.bitPattern)")
     }
 }
 
@@ -89,12 +98,19 @@ struct SyncCompletion: Codable, Hashable {
     }
 }
 
+struct SyncReminderSkip: Codable, Hashable {
+    var original: Reminder
+    var nextDueAt: Date?
+}
+
 enum SyncPayload: Codable, Hashable {
     case pet(Pet)
     case event(CareEvent)
     case health(HealthEntry)
     case option(SavedEventOption)
     case reminder(Reminder)
+    case schedule(ScheduledEvent)
+    case skip(SyncReminderSkip)
     case completion(SyncCompletion)
 
     var key: String {
@@ -104,6 +120,9 @@ enum SyncPayload: Codable, Hashable {
         case .health(let value): "health-" + value.id.uuidString
         case .option(let value): "option-" + value.id.uuidString
         case .reminder(let value): "reminder-" + value.id.uuidString
+        case .schedule(let value): "schedule-" + value.id.uuidString
+        case .skip(let value):
+            "skip-" + SyncIdentity.uuid(SyncIdentity.occurrence(value.original)).uuidString
         case .completion(let value):
             "completion-" + SyncIdentity.uuid(SyncIdentity.occurrence(value.original)).uuidString
         }
@@ -153,6 +172,19 @@ enum SyncPayload: Codable, Hashable {
                 value.schedule = schedule
             }
             return .reminder(value)
+        case .schedule(var value):
+            value.title = clean(value.title)
+            value.food.name = clean(value.food.name)
+            if var schedule = value.schedule {
+                schedule.recurrenceRule = rule(schedule.recurrenceRule)
+                value.schedule = schedule
+            }
+            return .schedule(value)
+        case .skip(var value):
+            if case .reminder(let original) = SyncPayload.reminder(value.original).normalized {
+                value.original = original
+            }
+            return .skip(value)
         case .option(var value):
             switch value.data {
             case .medicine(var medicine):
@@ -186,7 +218,7 @@ struct SyncEnvelope: Codable, Hashable {
 
     func validated() throws -> Self {
         guard formatVersion == 1, payload == nil || payload?.key == key,
-            ["pet-", "event-", "health-", "option-", "reminder-", "completion-"].contains(
+            ["pet-", "event-", "health-", "option-", "reminder-", "schedule-", "skip-", "completion-"].contains(
                 String(key.dropLast(36))),
             UUID(uuidString: String(key.suffix(36))) != nil
         else { throw SyncError.invalidRecord }
@@ -241,11 +273,12 @@ struct SyncSnapshot: Codable, Hashable {
     var payloads: [String: SyncPayload]
     init(
         pets: [Pet], events: [CareEvent], health: [HealthEntry], options: [SavedEventOption],
-        reminders: [Reminder]
+        reminders: [Reminder], schedules: [ScheduledEvent] = []
     ) {
         let values =
             pets.map(SyncPayload.pet) + events.map(SyncPayload.event) + health.map(SyncPayload.health)
             + options.map(SyncPayload.option) + reminders.map(SyncPayload.reminder)
+            + schedules.map(SyncPayload.schedule)
         payloads = Dictionary(uniqueKeysWithValues: values.map { ($0.key, $0.normalized) })
     }
 }
@@ -340,6 +373,21 @@ extension SyncPayload {
                     try data(eventData, type: value.eventType ?? type(of: eventData))
                 }
             }
+        case .schedule(let value):
+            try require(
+                !value.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    && finite(value.nextDueAt) && finite(value.createdAt) && finite(value.updatedAt)
+                    && finite(value.schedule?.endDate)
+            )
+            try data(.food(value.food), type: .food)
+            try rule(value.schedule?.recurrenceRule)
+            if let endDate = value.schedule?.endDate, let nextDueAt = value.nextDueAt {
+                try require(nextDueAt <= endDate)
+            }
+        case .skip(let value):
+            try SyncPayload.reminder(value.original).validate()
+            try require(value.original.isRecurring && finite(value.nextDueAt))
+            if let nextDueAt = value.nextDueAt { try require(nextDueAt > value.original.dueAt) }
         case .completion(let value):
             try SyncPayload.reminder(value.original).validate()
             try require(

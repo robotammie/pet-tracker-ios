@@ -261,12 +261,68 @@ final class SwiftDataReminderRepository: ReminderRepository {
     }
 }
 
+final class SwiftDataScheduledEventRepository: ScheduledEventRepository {
+    private let context: ModelContext
+    private let savesImmediately: Bool
+
+    init(context: ModelContext, savesImmediately: Bool = true) {
+        self.context = context
+        self.savesImmediately = savesImmediately
+    }
+
+    func listScheduledEvents() throws -> [ScheduledEvent] {
+        try context.fetch(FetchDescriptor<ScheduledEventRecord>()).map { record in
+            guard let value = SwiftDataMapper.scheduledEvent(from: record) else {
+                throw SyncError.invalidRecord
+            }
+            try SyncPayload.schedule(value).validate()
+            return value
+        }
+    }
+
+    func saveScheduledEvent(_ scheduledEvent: ScheduledEvent) throws {
+        let records = try context.fetch(FetchDescriptor<ScheduledEventRecord>())
+        let record = records.first { $0.id == scheduledEvent.id } ?? ScheduledEventRecord(
+            title: scheduledEvent.title,
+            petID: scheduledEvent.petID,
+            createdAt: scheduledEvent.createdAt,
+            updatedAt: scheduledEvent.updatedAt,
+            nextDueAt: scheduledEvent.nextDueAt,
+            calendarJSON: (try? String(
+                data: JSONEncoder().encode(scheduledEvent.calendar), encoding: .utf8
+            )) ?? "{}",
+            foodName: scheduledEvent.food.name,
+            foodTypeRawValue: scheduledEvent.food.foodType.rawValue,
+            foodAmount: scheduledEvent.food.amount,
+            foodUnitRawValue: scheduledEvent.food.unit.rawValue,
+            foodCalories: scheduledEvent.food.calories
+        )
+        record.id = scheduledEvent.id
+        SwiftDataMapper.update(record, with: scheduledEvent)
+        if record.modelContext == nil { context.insert(record) }
+        try save()
+    }
+
+    func deleteScheduledEvent(id: UUID) throws {
+        try context.fetch(FetchDescriptor<ScheduledEventRecord>())
+            .filter { $0.id == id }
+            .forEach(context.delete)
+        try save()
+    }
+
+    private func save() throws {
+        guard savesImmediately else { return }
+        do { try context.save() } catch { context.rollback(); throw error }
+    }
+}
+
 // SwiftData remains the local database; explicit sync owns CloudKit record identity.
-// Keeping this schema unchanged preserves the Stage 5 populated-store upgrade path.
+// Additive models use SwiftData's lightweight upgrade path and are covered by the populated-store test.
 enum LocalPersistence {
     static var schema: Schema {
         Schema([PetRecord.self, HealthEntryRecord.self, CareEventRecord.self,
-                SavedEventOptionRecord.self, ReminderRecord.self, ReminderTargetRecord.self])
+                SavedEventOptionRecord.self, ReminderRecord.self, ReminderTargetRecord.self,
+                ScheduledEventRecord.self])
     }
 
     static func makeContainer(url: URL? = nil, inMemory: Bool = false) throws -> ModelContainer {
@@ -288,6 +344,7 @@ enum LocalPersistence {
             || context.fetchCount(FetchDescriptor<SavedEventOptionRecord>()) > 0
             || context.fetchCount(FetchDescriptor<ReminderRecord>()) > 0
             || context.fetchCount(FetchDescriptor<ReminderTargetRecord>()) > 0
+            || context.fetchCount(FetchDescriptor<ScheduledEventRecord>()) > 0
     }
 
     static func validateDose(minimum: Double?, maximum: Double?) throws {

@@ -361,6 +361,42 @@ struct Reminder: Identifiable, Hashable, Codable {
     }
 }
 
+struct ScheduledEvent: Identifiable, Hashable, Codable {
+    let id: UUID
+    var title: String
+    var petID: UUID?
+    var food: FoodEventData
+    var nextDueAt: Date?
+    var schedule: ReminderSchedule?
+    var calendar: Calendar
+    var createdAt: Date
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        title: String,
+        petID: UUID?,
+        food: FoodEventData,
+        nextDueAt: Date?,
+        schedule: ReminderSchedule? = nil,
+        calendar: Calendar = .current,
+        createdAt: Date = .now,
+        updatedAt: Date = .now
+    ) {
+        self.id = id
+        self.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.petID = petID
+        self.food = food
+        self.nextDueAt = nextDueAt
+        self.schedule = schedule
+        self.calendar = calendar
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    var isActive: Bool { nextDueAt != nil }
+}
+
 struct NotificationPresentationPreferences: Hashable {
     var showsBanner: Bool
     var playsSound: Bool

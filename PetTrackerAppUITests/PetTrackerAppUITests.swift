@@ -200,8 +200,9 @@ final class PetTrackerAppUITests: XCTestCase {
         let app = launchApp(doseTiming: true)
         beginMedicine(in: app)
         app.buttons["medicineCreation.save"].tap()
+        XCTAssertTrue(app.navigationBars["Pet Tracker"].waitForExistence(timeout: 5))
         let complete = app.buttons["reminder.completeNow.CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC"]
-        XCTAssertTrue(complete.waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToElement(complete, in: app))
         complete.tap()
         let warning = app.alerts["Dose timing warning"]
         XCTAssertTrue(warning.waitForExistence(timeout: 5))
@@ -342,26 +343,87 @@ final class PetTrackerAppUITests: XCTestCase {
 
     func testReminderCreateEditCancelAndRelaunch() {
         let app = launchApp()
-        app.tabBars.buttons["Reminders"].tap()
+        openReminders(in: app)
         app.buttons["reminders.add"].tap()
         XCTAssertFalse(app.buttons["reminderEditor.save"].isEnabled)
         replaceText(app.textFields["reminderEditor.title"], with: "Fountain reminder")
         chooseMenu(app.buttons["reminderEditor.repeat"], choice: "Every interval", in: app)
         app.buttons["reminderEditor.save"].tap()
         XCTAssertTrue(app.staticTexts["Fountain reminder"].waitForExistence(timeout: 5))
-        app.staticTexts["Fountain reminder"].swipeLeft()
-        app.buttons["reminder.edit"].tap()
+        app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@", "reminder.active.", "Fountain reminder")
+        ).firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Edit Reminder"].waitForExistence(timeout: 5))
         replaceText(app.textFields["reminderEditor.title"], with: "Edited fountain")
         app.buttons["reminderEditor.save"].tap()
         XCTAssertTrue(app.staticTexts["Edited fountain"].waitForExistence(timeout: 5))
-        app.staticTexts["Edited fountain"].swipeLeft()
+        let editedReminderRow = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@", "reminder.active.", "Edited fountain")
+        ).firstMatch
+        editedReminderRow.swipeLeft()
         app.buttons["reminder.edit"].tap()
         replaceText(app.textFields["reminderEditor.title"], with: "Canceled fountain")
         app.buttons["reminderEditor.cancel"].tap()
         XCTAssertTrue(app.staticTexts["Edited fountain"].exists)
         relaunch(app)
-        app.tabBars.buttons["Reminders"].tap()
+        openReminders(in: app)
         XCTAssertTrue(app.staticTexts["Edited fountain"].waitForExistence(timeout: 5))
+
+        editedReminderRow.swipeRight()
+        app.buttons["reminder.delete"].tap()
+        let deleteAlert = app.alerts["Delete reminder?"]
+        let deleteOccurrence = deleteAlert.buttons["reminder.deleteOccurrence"].firstMatch
+        XCTAssertTrue(deleteOccurrence.waitForExistence(timeout: 5))
+        XCTAssertTrue(deleteAlert.buttons["reminder.deleteAll"].firstMatch.exists)
+        deleteOccurrence.tap()
+        XCTAssertTrue(app.staticTexts["Edited fountain"].waitForExistence(timeout: 5))
+
+        editedReminderRow.swipeRight()
+        app.buttons["reminder.delete"].tap()
+        app.alerts["Delete reminder?"].buttons["reminder.deleteAll"].firstMatch.tap()
+        XCTAssertFalse(app.staticTexts["Edited fountain"].exists)
+        relaunch(app)
+        openReminders(in: app)
+        XCTAssertFalse(app.staticTexts["Edited fountain"].exists)
+    }
+
+    func testScheduledFoodEventCreatesAtScheduledTimeAndPersists() {
+        let app = launchApp()
+        openReminders(in: app)
+        app.buttons["scheduledEvents.add"].tap()
+        XCTAssertTrue(app.navigationBars["Add Scheduled Event"].waitForExistence(timeout: 5))
+        replaceText(app.textFields["scheduledEventEditor.title"], with: "Automatic breakfast")
+        chooseMenu(
+            app.buttons["scheduledEventEditor.food"],
+            choice: "Breakfast Dry Food",
+            in: app
+        )
+        chooseMenu(
+            app.buttons["scheduledEventEditor.repeat"],
+            choice: "Every interval",
+            in: app
+        )
+        XCTAssertTrue(app.buttons["scheduledEventEditor.save"].isEnabled)
+        app.buttons["scheduledEventEditor.save"].tap()
+        XCTAssertTrue(app.staticTexts["Automatic breakfast"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["No scheduled events"].exists)
+
+        relaunch(app)
+        openReminders(in: app)
+        XCTAssertTrue(app.staticTexts["Automatic breakfast"].waitForExistence(timeout: 5))
+        app.tabBars.buttons["Events"].tap()
+        XCTAssertTrue(app.staticTexts["Breakfast Dry Food · 1 cup · 380 cal"].waitForExistence(timeout: 5))
+    }
+
+    private func openReminders(in app: XCUIApplication) {
+        let tab = app.tabBars.buttons["Reminders"]
+        XCTAssertTrue(tab.waitForExistence(timeout: 5))
+        tab.tap()
+        let navigationBar = app.navigationBars["Reminders"]
+        if !navigationBar.waitForExistence(timeout: 2) {
+            tab.tap()
+        }
+        XCTAssertTrue(navigationBar.waitForExistence(timeout: 5))
     }
 
     func testGeneralMedicineReminderLogsStoredPetDose() {
@@ -418,6 +480,10 @@ final class PetTrackerAppUITests: XCTestCase {
         scrollTo(picker, in: app)
         picker.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5)).tap()
         let option = app.buttons[choice]
+        if !option.waitForExistence(timeout: 1) {
+            scrollTo(picker, in: app)
+            picker.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5)).tap()
+        }
         guard option.waitForExistence(timeout: 5) else {
             let screenshot = XCTAttachment(screenshot: app.screenshot())
             screenshot.lifetime = .keepAlways

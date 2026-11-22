@@ -76,6 +76,50 @@ final class SwiftDataPersistenceTests: XCTestCase {
         XCTAssertTrue(try repository.listReminders(includeMuted: true).isEmpty)
     }
 
+    func testScheduledEventRepositoryPersistsAndDeletesFoodSchedule() throws {
+        let context = try makeContext()
+        let repository = SwiftDataScheduledEventRepository(context: context)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: -7 * 3_600)!
+        let scheduled = ScheduledEvent(
+            title: "Auto feeder breakfast",
+            petID: UUID(),
+            food: FoodEventData(
+                name: "Kibble", foodType: .dry, amount: 0.25,
+                unit: .cup, calories: 95, caloriesPerUnit: 380
+            ),
+            nextDueAt: Date(timeIntervalSince1970: 1_000),
+            schedule: ReminderSchedule(
+                recurrenceRule: .timesPerDay(
+                    count: 2,
+                    times: [DateComponents(hour: 8), DateComponents(hour: 20)]
+                ),
+                endDate: Date(timeIntervalSince1970: 100_000)
+            ),
+            calendar: calendar
+        )
+
+        try repository.saveScheduledEvent(scheduled)
+        let persisted = try XCTUnwrap(repository.listScheduledEvents().first)
+        XCTAssertEqual(persisted.id, scheduled.id)
+        XCTAssertEqual(persisted.title, scheduled.title)
+        XCTAssertEqual(persisted.petID, scheduled.petID)
+        XCTAssertEqual(persisted.food, scheduled.food)
+        XCTAssertEqual(persisted.nextDueAt, scheduled.nextDueAt)
+        XCTAssertEqual(persisted.schedule?.endDate, scheduled.schedule?.endDate)
+        XCTAssertEqual(
+            persisted.calendar.timeZone.secondsFromGMT(for: scheduled.nextDueAt!),
+            scheduled.calendar.timeZone.secondsFromGMT(for: scheduled.nextDueAt!)
+        )
+        guard case let .timesPerDay(count, times) = persisted.schedule?.recurrenceRule else {
+            return XCTFail("Expected times-per-day recurrence")
+        }
+        XCTAssertEqual(count, 2)
+        XCTAssertEqual(times.map { ($0.hour ?? -1) * 60 + ($0.minute ?? 0) }, [480, 1_200])
+        try repository.deleteScheduledEvent(id: scheduled.id)
+        XCTAssertTrue(try repository.listScheduledEvents().isEmpty)
+    }
+
     func testReminderRepositoryPersistsEventData() throws {
         let context = try makeContext()
         let repository = SwiftDataReminderRepository(context: context)
@@ -275,7 +319,8 @@ final class SwiftDataPersistenceTests: XCTestCase {
             CareEventRecord.self,
             SavedEventOptionRecord.self,
             ReminderRecord.self,
-            ReminderTargetRecord.self
+            ReminderTargetRecord.self,
+            ScheduledEventRecord.self
         ])
         let configuration = ModelConfiguration(
             schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)

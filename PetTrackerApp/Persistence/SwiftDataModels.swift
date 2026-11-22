@@ -181,3 +181,55 @@ final class ReminderTargetRecord {
         self.completedAt = completedAt
     }
 }
+
+@Model
+final class ScheduledEventRecord {
+    @Attribute(.unique) var id: UUID
+    var title: String
+    var petID: UUID?
+    var createdAt: Date
+    var updatedAt: Date
+    var nextDueAt: Date?
+    var calendarJSON: String
+
+    var foodName: String
+    var foodTypeRawValue: String
+    var foodAmount: Double
+    var foodUnitRawValue: String
+    var foodCalories: Int
+    var foodCaloriesPerUnit: Int?
+
+    var recurrenceKind: String?
+    var recurrenceValue: Int?
+    var recurrenceUnitRawValue: String?
+    var timesOfDayMinutes: String?
+    var endDate: Date?
+
+    init(
+        id: UUID = UUID(),
+        title: String,
+        petID: UUID?,
+        createdAt: Date,
+        updatedAt: Date,
+        nextDueAt: Date?,
+        calendarJSON: String,
+        foodName: String,
+        foodTypeRawValue: String,
+        foodAmount: Double,
+        foodUnitRawValue: String,
+        foodCalories: Int
+    ) {
+        self.id = id
+        self.title = title
+        self.petID = petID
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.nextDueAt = nextDueAt
+        self.calendarJSON = calendarJSON
+        self.foodName = foodName
+        self.foodTypeRawValue = foodTypeRawValue
+        self.foodAmount = foodAmount
+        self.foodUnitRawValue = foodUnitRawValue
+        self.foodCalories = foodCalories
+    }
+}

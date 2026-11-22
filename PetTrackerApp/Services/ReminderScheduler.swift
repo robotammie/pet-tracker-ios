@@ -112,3 +112,47 @@ enum ReminderScheduler {
         )
     }
 }
+
+struct ScheduledEventMaterialization {
+    var updatedSchedule: ScheduledEvent
+    var events: [CareEvent]
+}
+
+enum ScheduledEventService {
+    static func materialize(
+        _ scheduledEvent: ScheduledEvent,
+        through now: Date,
+        limit: Int = 100,
+        calendar: Calendar? = nil
+    ) -> ScheduledEventMaterialization {
+        var updated = scheduledEvent
+        let calendar = calendar ?? scheduledEvent.calendar
+        var events: [CareEvent] = []
+        let safeLimit = max(1, limit)
+
+        while let dueAt = updated.nextDueAt, dueAt <= now, events.count < safeLimit {
+            events.append(CareEvent(
+                id: SyncIdentity.scheduledEvent(scheduleID: updated.id, scheduledAt: dueAt),
+                type: .food,
+                petID: updated.petID,
+                createdAt: now,
+                startTime: dueAt,
+                data: .food(updated.food)
+            ))
+
+            if let schedule = updated.schedule,
+               let nextDue = ReminderScheduler.nextDueDate(
+                after: dueAt,
+                schedule: schedule,
+                calendar: calendar
+               ) {
+                updated.nextDueAt = nextDue
+            } else {
+                updated.nextDueAt = nil
+            }
+        }
+
+        if !events.isEmpty { updated.updatedAt = now }
+        return ScheduledEventMaterialization(updatedSchedule: updated, events: events)
+    }
+}

@@ -67,6 +67,170 @@ final class SyncTests: XCTestCase {
             SyncIdentity.event(a.updatedReminder, petID: first.id))
     }
 
+    func testScheduledEventMaterializationConvergesAcrossDevicesWithoutDuplicates() throws {
+        let a = try context()
+        let b = try context()
+        let firstDue = time
+        let through = time.addingTimeInterval(90 * 60)
+        let scheduled = ScheduledEvent(
+            title: "Auto feeder",
+            petID: nil,
+            food: FoodEventData(
+                name: "Kibble", foodType: .dry, amount: 0.25,
+                unit: .cup, calories: 95, caloriesPerUnit: 380
+            ),
+            nextDueAt: firstDue,
+            schedule: ReminderSchedule(recurrenceRule: .every(value: 1, unit: .hour), endDate: nil)
+        )
+        try SwiftDataScheduledEventRepository(context: a).saveScheduledEvent(scheduled)
+        let ja = try journal(a)
+        let jb = try journal(b)
+        try jb.receive(Array(ja.state.records.values), context: b)
+
+        func store(_ context: ModelContext, _ journal: SyncJournal) -> PetCareStore {
+            let store = PetCareStore(notificationScheduler: SyncSilentScheduler())
+            store.configurePersistence(
+                petRepository: SwiftDataPetRepository(context: context, savesImmediately: false),
+                eventRepository: SwiftDataCareEventRepository(context: context, savesImmediately: false),
+                savedOptionRepository: SwiftDataSavedEventOptionRepository(
+                    context: context, savesImmediately: false
+                ),
+                reminderRepository: SwiftDataReminderRepository(context: context, savesImmediately: false),
+                healthRepository: SwiftDataHealthEntryRepository(context: context, savesImmediately: false),
+                scheduledEventRepository: SwiftDataScheduledEventRepository(
+                    context: context, savesImmediately: false
+                ),
+                performTransaction: { try journal.transaction(context: context, action: $0) }
+            )
+            XCTAssertTrue(store.refreshFromPersistence())
+            return store
+        }
+
+        let firstStore = store(a, ja)
+        let secondStore = store(b, jb)
+        XCTAssertTrue(firstStore.materializeScheduledEvents(through: through))
+        XCTAssertTrue(secondStore.materializeScheduledEvents(through: through))
+        try ja.receive(Array(jb.state.records.values), context: a)
+        try jb.receive(Array(ja.state.records.values), context: b)
+
+        XCTAssertEqual(try SyncJournal.snapshot(context: a), try SyncJournal.snapshot(context: b))
+        let events = try SwiftDataCareEventRepository(context: a).listEvents()
+        XCTAssertEqual(events.count, 2)
+        XCTAssertEqual(Set(events.map(\.id)).count, 2)
+        XCTAssertEqual(Set(events.map(\.startTime)), [firstDue, firstDue.addingTimeInterval(3_600)])
+
+        XCTAssertTrue(firstStore.refreshFromPersistence())
+        XCTAssertTrue(firstStore.deleteScheduledEventAndRefresh(id: scheduled.id))
+        try jb.receive(Array(ja.state.records.values), context: b)
+        XCTAssertTrue(try SwiftDataScheduledEventRepository(context: b).listScheduledEvents().isEmpty)
+        XCTAssertEqual(try SwiftDataCareEventRepository(context: b).listEvents().count, 2)
+    }
+
+    func testReminderSeriesDeletionWinsConcurrentEditAndSuppressesCompletionReplay() throws {
+        let a = try context()
+        let b = try context()
+        let pet = Pet(name: "A")
+        let original = reminder(pets: [pet])
+        try SwiftDataPetRepository(context: a).savePet(pet)
+        try SwiftDataReminderRepository(context: a).saveReminder(original)
+        let ja = try journal(a)
+        let jb = try journal(b)
+        try jb.receive(Array(ja.state.records.values), context: b)
+
+        try complete(original, pets: [pet.id], at: time, context: a, journal: ja)
+        try jb.receive(Array(ja.state.records.values), context: b)
+
+        func store(_ context: ModelContext, _ journal: SyncJournal) -> PetCareStore {
+            let store = PetCareStore(notificationScheduler: SyncSilentScheduler())
+            store.configurePersistence(
+                petRepository: SwiftDataPetRepository(context: context, savesImmediately: false),
+                eventRepository: SwiftDataCareEventRepository(context: context, savesImmediately: false),
+                savedOptionRepository: SwiftDataSavedEventOptionRepository(
+                    context: context, savesImmediately: false
+                ),
+                reminderRepository: SwiftDataReminderRepository(context: context, savesImmediately: false),
+                healthRepository: SwiftDataHealthEntryRepository(context: context, savesImmediately: false),
+                scheduledEventRepository: SwiftDataScheduledEventRepository(
+                    context: context, savesImmediately: false
+                ),
+                performTransaction: { try journal.transaction(context: context, action: $0) }
+            )
+            XCTAssertTrue(store.refreshFromPersistence())
+            return store
+        }
+
+        let firstStore = store(a, ja)
+        let secondStore = store(b, jb)
+        let active = try XCTUnwrap(firstStore.reminders.first(where: \.isActive))
+        XCTAssertTrue(firstStore.deleteReminderSeriesAndRefresh(active))
+
+        var concurrentEdit = try XCTUnwrap(secondStore.reminders.first(where: \.isActive))
+        concurrentEdit.title = "Concurrent edit"
+        XCTAssertTrue(secondStore.saveReminderAndRefresh(concurrentEdit))
+
+        try ja.receive(Array(jb.state.records.values), context: a)
+        try jb.receive(Array(ja.state.records.values), context: b)
+
+        XCTAssertEqual(try SyncJournal.snapshot(context: a), try SyncJournal.snapshot(context: b))
+        XCTAssertTrue(try SwiftDataReminderRepository(context: a).listReminders(includeMuted: true).isEmpty)
+        XCTAssertTrue(try SwiftDataReminderRepository(context: b).listReminders(includeMuted: true).isEmpty)
+        XCTAssertEqual(try SwiftDataCareEventRepository(context: a).listEvents().count, 1)
+        XCTAssertEqual(try SwiftDataCareEventRepository(context: b).listEvents().count, 1)
+    }
+
+    func testSkippedOccurrenceSurvivesConcurrentReminderEdit() throws {
+        let a = try context()
+        let b = try context()
+        let pet = Pet(name: "A")
+        let original = reminder(pets: [pet])
+        try SwiftDataPetRepository(context: a).savePet(pet)
+        try SwiftDataReminderRepository(context: a).saveReminder(original)
+        let ja = try journal(a)
+        let jb = try journal(b)
+        try jb.receive(Array(ja.state.records.values), context: b)
+
+        func store(_ context: ModelContext, _ journal: SyncJournal) -> PetCareStore {
+            let store = PetCareStore(notificationScheduler: SyncSilentScheduler())
+            store.configurePersistence(
+                petRepository: SwiftDataPetRepository(context: context, savesImmediately: false),
+                eventRepository: SwiftDataCareEventRepository(context: context, savesImmediately: false),
+                savedOptionRepository: SwiftDataSavedEventOptionRepository(
+                    context: context, savesImmediately: false
+                ),
+                reminderRepository: SwiftDataReminderRepository(context: context, savesImmediately: false),
+                healthRepository: SwiftDataHealthEntryRepository(context: context, savesImmediately: false),
+                scheduledEventRepository: SwiftDataScheduledEventRepository(
+                    context: context, savesImmediately: false
+                ),
+                performTransaction: { try journal.transaction(context: context, action: $0) }
+            )
+            store.onReminderOccurrenceSkipped = { journal.stageSkip($0, nextDueAt: $1) }
+            XCTAssertTrue(store.refreshFromPersistence())
+            return store
+        }
+
+        let firstStore = store(a, ja)
+        let secondStore = store(b, jb)
+        XCTAssertTrue(firstStore.deleteReminderOccurrenceAndRefresh(original))
+        var concurrentEdit = original
+        concurrentEdit.title = "Edited elsewhere"
+        XCTAssertTrue(secondStore.saveReminderAndRefresh(concurrentEdit))
+
+        try ja.receive(Array(jb.state.records.values), context: a)
+        try jb.receive(Array(ja.state.records.values), context: b)
+
+        XCTAssertEqual(try SyncJournal.snapshot(context: a), try SyncJournal.snapshot(context: b))
+        let expectedDue = time.addingTimeInterval(8 * 3_600)
+        XCTAssertEqual(
+            try SwiftDataReminderRepository(context: a).listReminders(includeMuted: true).first?.dueAt,
+            expectedDue
+        )
+        XCTAssertEqual(
+            try SwiftDataReminderRepository(context: b).listReminders(includeMuted: true).first?.dueAt,
+            expectedDue
+        )
+    }
+
     func testConcurrentSamePetCompletionConvergesToOneEventHistoryAndNextOccurrence() throws {
         let a = try context()
         let b = try context()
@@ -491,9 +655,24 @@ final class SyncTests: XCTestCase {
                     petDoseIntervals: [
                         .init(petID: pet.id, interval: .init(minimumHours: 10, maximumHours: 12))
                     ])))
+        let schedule = ScheduledEvent(
+            title: "Breakfast", petID: pet.id,
+            food: FoodEventData(
+                name: "Food", foodType: .dry, amount: 0.25,
+                unit: .cup, calories: 95, caloriesPerUnit: 380
+            ),
+            nextDueAt: time,
+            schedule: .init(recurrenceRule: .every(value: 1, unit: .day), endDate: nil)
+        )
         let snapshot = SyncSnapshot(
-            pets: [pet], events: [], health: [health], options: [option], reminders: [reminder(pets: [pet])])
+            pets: [pet], events: [], health: [health], options: [option],
+            reminders: [reminder(pets: [pet])], schedules: [schedule]
+        )
         XCTAssertEqual(try SyncCoding.decode(SyncSnapshot.self, from: SyncCoding.encode(snapshot)), snapshot)
+        let skip = SyncPayload.skip(
+            SyncReminderSkip(original: reminder(pets: [pet]), nextDueAt: time.addingTimeInterval(8 * 3_600))
+        )
+        XCTAssertEqual(try SyncCoding.decode(SyncPayload.self, from: SyncCoding.encode(skip)), skip)
         XCTAssertFalse(
             String(decoding: try SyncCoding.encode(snapshot), as: UTF8.self).contains(
                 "NotificationPreferences"))
@@ -592,6 +771,15 @@ private final class MemorySyncTransport: SyncTransport {
                     ReminderTarget(petID: firstPet.id, eventData: dose),
                     ReminderTarget(petID: secondPet.id, eventData: dose),
                 ])
+            let schedule = ScheduledEvent(
+                title: "Live automatic breakfast", petID: firstPet.id,
+                food: FoodEventData(
+                    name: "Live test food", foodType: .wet, amount: 1,
+                    unit: .can, calories: 90, caloriesPerUnit: 90
+                ),
+                nextDueAt: time.addingTimeInterval(86_400),
+                schedule: .init(recurrenceRule: .every(value: 1, unit: .day), endDate: nil)
+            )
 
             try firstJournal.transaction(context: firstContext) {
                 let pets = SwiftDataPetRepository(context: firstContext, savesImmediately: false)
@@ -605,6 +793,8 @@ private final class MemorySyncTransport: SyncTransport {
                     .saveSavedOption(option)
                 try SwiftDataReminderRepository(context: firstContext, savesImmediately: false)
                     .saveReminder(reminder)
+                try SwiftDataScheduledEventRepository(context: firstContext, savesImmediately: false)
+                    .saveScheduledEvent(schedule)
             }
 
             let firstStore = configuredStore(context: firstContext, journal: firstJournal)
@@ -693,6 +883,9 @@ private final class MemorySyncTransport: SyncTransport {
                     context: context, savesImmediately: false),
                 reminderRepository: SwiftDataReminderRepository(context: context, savesImmediately: false),
                 healthRepository: SwiftDataHealthEntryRepository(context: context, savesImmediately: false),
+                scheduledEventRepository: SwiftDataScheduledEventRepository(
+                    context: context, savesImmediately: false
+                ),
                 performTransaction: { try journal.transaction(context: context, action: $0) })
             store.onReminderCompleted = { journal.stageCompletion($0, pets: $1, at: $2, events: $3) }
             XCTAssertTrue(store.refreshFromPersistence())
