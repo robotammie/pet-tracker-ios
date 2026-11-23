@@ -57,6 +57,8 @@ struct ReminderEditorView: View {
                             Text(event.type.rawValue)
                             Spacer()
                             Button("Remove", role: .destructive) { form.events.removeAll { $0.id == event.id } }
+                                .frame(minHeight: 44)
+                                .accessibilityLabel("Remove \(event.type.rawValue.lowercased()) event")
                         }
                     }
                     .disabled(form.details.hasCompletedTargets)

@@ -6,6 +6,45 @@ final class PetTrackerAppUITests: XCTestCase {
         continueAfterFailure = false
     }
 
+    func testAccessibilityTextSizeCoreScreens() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-uiTestingReset",
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Pet Tracker"].waitForExistence(timeout: 8))
+        for type in ["Food", "Medicine", "Litter", "Health"] {
+            let button = app.buttons["home.quickAdd.\(type)"]
+            XCTAssertTrue(button.isHittable)
+            XCTAssertTrue(app.frame.contains(button.frame), "Quick Add \(type) must fit on screen")
+        }
+        captureUI(app, name: "Home accessibility text size")
+        app.buttons["home.quickAdd.Litter"].tap()
+        XCTAssertTrue(app.buttons["litterCreation.save"].waitForExistence(timeout: 8))
+        let recurring = app.switches["eventCreation.recurring"]
+        scrollAccessibilityScreenTo(recurring, in: app)
+        tapSwitch(recurring)
+        app.buttons["litterCreation.save"].tap()
+        app.tabBars.buttons["Events"].tap()
+        app.segmentedControls.buttons["Litter"].tap()
+        scrollAccessibilityScreenTo(app.buttons["events.recurring"], in: app)
+        app.buttons["events.recurring"].tap()
+        scrollAccessibilityScreenTo(app.staticTexts["Litter cleaning"], in: app)
+        captureUI(app, name: "Recurring event accessibility text size")
+        openReminders(in: app)
+        app.buttons["reminders.add"].tap()
+        XCTAssertTrue(app.textFields["reminderEditor.title"].waitForExistence(timeout: 5))
+        captureUI(app, name: "Reminder form accessibility text size")
+        app.buttons["reminderEditor.cancel"].tap()
+        openSettings(in: app)
+        let notifications = app.buttons["settings.notifications"]
+        scrollAccessibilityScreenTo(notifications, in: app)
+        notifications.tap()
+        let defaults = app.switches["settings.Food.useDefault"]
+        scrollAccessibilityScreenTo(defaults, in: app)
+        XCTAssertTrue(defaults.isHittable)
+        captureUI(app, name: "Notifications accessibility text size")
+    }
+
     func testStartupFailureRetryKeepsExistingTestHistory() {
         let app = launchApp()
         app.buttons["home.quickAdd.Litter"].tap()
@@ -559,6 +598,20 @@ final class PetTrackerAppUITests: XCTestCase {
         for _ in 0..<5 {
             if element.exists && element.isHittable { return }
             (app.collectionViews.allElementsBoundByIndex.last ?? app).swipeDown()
+        }
+        XCTAssertTrue(element.isHittable)
+    }
+
+    private func scrollAccessibilityScreenTo(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<5 {
+            if element.exists && element.isHittable { return }
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75))
+                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.35)))
+        }
+        for _ in 0..<5 {
+            if element.exists && element.isHittable { return }
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.35))
+                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75)))
         }
         XCTAssertTrue(element.isHittable)
     }

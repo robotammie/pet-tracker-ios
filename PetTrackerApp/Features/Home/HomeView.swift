@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct HomeView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @EnvironmentObject private var store: PetCareStore
     @State private var isDueExpanded = true
     @State private var isRecentExpanded = true
@@ -68,18 +69,29 @@ struct HomeView: View {
     }
 
     private var quickAddButtons: some View {
-        HStack(spacing: 12) {
-            quickAddButton("Food", type: .food)
-            quickAddButton("Medicine", type: .medicine)
-            quickAddButton("Litter", type: .litter)
-            Button { healthRoute = HealthEditorRoute() } label: {
-                Image(systemName: "heart.text.square").frame(maxWidth: .infinity).frame(minHeight: 32)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    quickAddContent
+                }
+            } else {
+                HStack(spacing: 12) { quickAddContent }
             }
-            .accessibilityLabel("Health").accessibilityIdentifier("home.quickAdd.Health")
         }
         .buttonStyle(.bordered)
         .controlSize(.large)
         .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
+    }
+
+    @ViewBuilder
+    private var quickAddContent: some View {
+        quickAddButton("Food", type: .food)
+        quickAddButton("Medicine", type: .medicine)
+        quickAddButton("Litter", type: .litter)
+        Button { healthRoute = HealthEditorRoute() } label: {
+            Image(systemName: "heart.text.square").frame(maxWidth: .infinity).frame(minHeight: 32)
+        }
+        .accessibilityLabel("Health").accessibilityIdentifier("home.quickAdd.Health")
     }
 
     private func quickAddButton(_ title: String, type: CareEventType) -> some View {
@@ -210,6 +222,7 @@ enum HomeRecentService {
 }
 
 private struct HomeRecentEventRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let event: CareEvent
     let petName: String
 
@@ -217,7 +230,7 @@ private struct HomeRecentEventRow: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: event.type.homeSystemImage)
                 .foregroundStyle(.secondary)
-                .frame(width: 24)
+                .frame(width: dynamicTypeSize.isAccessibilitySize ? nil : 24)
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline) {

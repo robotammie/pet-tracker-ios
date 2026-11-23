@@ -3,11 +3,13 @@
 This plan assumes the current direction in `design.md`: iOS native, SwiftUI-first, local/iCloud-owned data only, good architecture from the beginning, and enough explanation along the way for a developer new to mobile app work.
 
 ## Current Clarification Status
-No clarification blocks planning. Current Stage 6.1–6.3 decisions:
+Current priority (2026-11-22): finalize and polish the existing app, then design multi-user sync and TestFlight distribution. Archive/restore/duplicate are deferred. Multi-user choices are recorded in sync-design.md and remain proposals.
+
+Earlier Stage 6.1–6.3 decisions (archive items deferred):
 - Archived care events are hidden from Events, Home Recent, pet history, and displayed calorie totals until restored.
 - The Events tab toolbar provides View Archived for the currently selected event type and pet filter. Archived rows can be restored or permanently deleted.
 - “Delete all” on a recurring reminder removes the active series and its completed reminder history.
-- Automatic scheduled events initially support food/automatic-feeder entries only. Medicine continues to require reminder completion or manual logging.
+- Automatic scheduled events support food/automatic-feeder and household litter entries. Medicine continues to require reminder completion or manual logging.
 
 Known choices:
 - Build iOS native only for v1.
@@ -17,9 +19,9 @@ Known choices:
 - Stage 6 reviewed managed SwiftData sync and selected the explicit CloudKit fallback with a future shared-database path. Stage 6.3 adds one tested additive SwiftData model for automatic schedules. See sync-design.md.
 - Treat food, litter, medicine, notifications, saved autofill options, pets, and settings as separate model concerns.
 - Keep v1 settings focused on notification preferences and the global day-only notification time.
-- Use hybrid notification settings: global controls first, with restrained per-event-type overrides.
+- Use a dedicated Notifications page: daily time first, then per-event overrides; global presentation is managed in iPhone Settings.
 - Add accessibility identifiers as UI is touched; add UI smoke tests during the local polish pass.
-- During early development, reset/reseed after breaking schema changes; add formal migrations before real daily-use data matters.
+- Preserve populated stores through tested migrations; never reset/reseed personal data to make an upgrade work.
 - Include a debug-only reset/reseed tool now for faster simulator/device iteration.
 
 ## Test Workflow Notes
@@ -792,7 +794,9 @@ Acceptance checks:
 - UI automation continues to use cloud-disabled test data; current unit/UI regression suites pass.
 - No server-side app state is introduced.
 
-## Stage 6.1: Event History Actions - Planned
+## Stage 6.1: Event History Actions - Deferred
+
+Deferred by the user on 2026-11-22. Archive/restore/duplicate are outside the current milestone and do not block verification, polish, or multi-user sync. The following is retained as a future proposal.
 
 Goal: make logged events easier to manage from the Events tab without losing useful history accidentally.
 
@@ -874,13 +878,13 @@ Implementation (2026-09-15): added a food-only `ScheduledEvent` domain entity, a
 
 Final Stage 6.2–6.3 verification on 2026-09-15 covers the populated-store additive upgrade, persistence round trip, bounded catch-up, deterministic two-context deduplication, schedule deletion, occurrence skip, concurrent skip/edit, series-history deletion, and concurrent series-delete/edit behavior. The full unit suite passed **119 tests with 0 failures**; result `DerivedData/Logs/Test/Test-PetTrackerApp-2026.09.15_19-02-35--0700.xcresult`. The full UI suite passed **23 tests with 0 failures**, including reminder row editing, occurrence/series deletion, schedule creation, relaunch, and generated-event visibility; result `DerivedData/Logs/Test/Test-PetTrackerApp-2026.09.15_18-48-29--0700.xcresult`.
 
-## Stage 6.4: Functionality-Tweak Milestone Verification - Planned
+## Stage 6.4: Current-App Milestone Verification
 
-Goal: validate the three functionality stages together before release-readiness work.
+Goal: validate the current implemented features together. Stage 6.1 is deferred; no archive/restore/duplicate work is required.
 
 Tasks:
 - Run the app/test build and full unit suite after each stage; run focused UI tests for the changed workflow before moving on.
-- At milestone completion, run the full UI suite and a two-context sync regression covering archive/restore, reminder occurrence deletion, series deletion, and scheduled-event deduplication.
+- At milestone completion, run the full UI suite and a two-context sync regression covering reminder occurrence/series deletion, multi-event completion, scheduled food/litter deduplication, offline replay, and account boundaries.
 - Verify on the physical iPhone that existing personal data survives the model upgrade and that local notifications are rescheduled correctly.
 - Update `design.md`, `handoff.md`, and user-facing developer notes to reflect final implemented behavior and any scope changes.
 
@@ -996,3 +1000,33 @@ Verification evidence (iPhone 17 simulator, iOS 26.5; isolated public test store
 Result bundles are under `~/Library/Developer/XcodeBuildMCP/workspaces/PetTrackerApp-8636fea96c6a/result-bundles/`. No personal simulator store or physical phone data was reset during this work.
 
 Final focused run passes mixed-event reminder creation/completion with labeled payload fields, Events deletion cancel/confirm/relaunch, and Home no-op tap/edit/delete: `test_sim_2026-11-22T20-40-47-372Z_pid82668_cd982611.xcresult`. All 26 UI workflows have passing results across the full run and focused reruns after fixes; 131 unit tests pass. Build and `git diff --check` pass.
+
+
+## Current-app finalization and next priority (2026-11-22)
+
+Scope is frozen at the current feature set. Archive/restore/duplicate are deferred. This pass includes the first-listed-event reminder icon, plain-language reminder subtitles, accessible Remove targets, recurring-row large-text layout, and Release seed isolation. Private seed source is excluded from Release compilation; a fresh Release installation starts empty. Existing local data is retained. No CloudKit schema deployment, Production activation, TestFlight upload, or multi-user implementation is part of this pass.
+
+Verification completed: full existing unit/UI regression; focused final-polish and largest-text UI checks with screenshots; Release compile and proof that private seed is excluded. Real-device notification delivery, latest in-place phone upgrade, live CloudKit on the new payload version, and Production/TestFlight testing remain separate device/distribution checks. Earlier live CloudKit verification is evidence for the existing private-account transport, not proof of multi-user support.
+
+Next sequence: decide household ownership/access and notification behavior; implement and validate sharing with two distinct iCloud accounts; activate and verify Production before a sync-enabled TestFlight pilot. See sync-design.md for the decision brief and release gates.
+
+Release verification: compile-only iPhone simulator Release build passed using separate `/tmp/PetTrackerReleaseValidation` derived data. The generated Release `PetTrackerApp.SwiftFileList` was checked and does not contain `SeedData.local.swift`. Log: `build_sim_2026-11-22T22-06-39-568Z_pid82668_bc2f5237.log` in the XcodeBuildMCP workspace. Release signing/archiving, TestFlight distribution, and live Production sync are not established by this simulator build.
+
+Finalization verification evidence:
+
+- Full baseline: 131 unit tests and all 26 existing UI workflows passed in `test_sim_2026-11-22T22-01-09-876Z_pid82668_6291fe32.xcresult`.
+- After subtitle, removal-target, recurring-layout, and Release seed-policy changes: 131 unit tests plus mixed-event reminder, recurring food, and the new largest-text UI workflow passed (134 tests) in `test_sim_2026-11-22T22-17-30-551Z_pid82668_df384c7a.xcresult`.
+- Screenshot inspection caught clipped Quick Add icons and crowded row icons at the largest accessibility text size. Quick Add now uses two columns at accessibility sizes; reminder, recurring, and Home event icons use intrinsic width there. The new UI test checks every Quick Add button fits inside the screen.
+- The first final-layout rerun could not start because CoreSimulator failed to clone the device. Retried with parallel testing disabled; this was a simulator infrastructure failure, not an application assertion failure.
+
+- Final Home tap/edit/delete passed in `test_sim_2026-11-22T22-23-36-616Z_pid82668_b59e7137.xcresult`. That run exposed a stale collection-view index in the large-text test scrolling helper during screen transitions. The new accessibility workflow now uses screen-coordinate scrolling, without changing existing workflow helpers. Its rerun passed in `test_sim_2026-11-22T22-26-17-301Z_pid82668_cc2ec744.xcresult`.
+- Screenshots confirm all four Quick Add icons fit, reminder icons no longer overlap their labels, and notification/form controls remain usable at the largest accessibility text size. Recurring titles additionally wrap vertically.
+
+- Final largest-text rerun after title wrapping passed in `test_sim_2026-11-22T22-30-25-915Z_pid82668_49f3eb57.xcresult`. An intermediate rerun lost the app accessibility tree before the litter sheet appeared; an explicit form-presentation wait was added. Final screenshots are exported to `/tmp/pettracker-polish-final`. `git diff --check` passes.
+- Test-runner-only cleanup was attempted after testing, but CoreSimulator reported the target device was already shut down. No app/data uninstall or simulator reset was performed.
+
+## Confirmed multi-user scope (2026-11-22)
+
+All users have iPhone/iCloud; share the entire household with edit/delete access for every member and no read-only role. Notify everyone by default, with independent personal notification preferences. A member leaving must preserve household data and their historical events. Show caregiver attribution on logged events. These are product decisions, not evidence of implementation. See sync-design.md for attribution implications and remaining join/owner/departure lifecycle choices. No publication or Production changes are authorized by these answers.
+
+Owner/closure decision (2026-11-22): a departing owner designates a successor when others remain. The final member can delete all household data or save it as a reloadable seed/backup file. Plan a verified owner handoff and lossless export/import, retaining history and attribution. CloudKit storage ownership must be handled explicitly; changing an app owner field alone is insufficient. See sync-design.md for implementation gates and unresolved unexpected-owner-loss/restore details. This records scope only; no data is deleted, exported, or published.

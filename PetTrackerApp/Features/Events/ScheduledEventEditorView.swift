@@ -1,17 +1,22 @@
 import SwiftUI
 
 struct ScheduledEventSummaryRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let scheduledEvent: ScheduledEvent
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: scheduledEvent.type.homeSystemImage)
                 .foregroundStyle(.secondary)
-                .frame(width: 24)
+                .frame(width: dynamicTypeSize.isAccessibilitySize ? nil : 24)
             VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline) {
+                let layout = dynamicTypeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+                    : AnyLayout(HStackLayout(alignment: .firstTextBaseline))
+                layout {
                     Text(scheduledEvent.title).font(.headline)
-                    Spacer()
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !dynamicTypeSize.isAccessibilitySize { Spacer() }
                     if let nextDueAt = scheduledEvent.nextDueAt {
                         RelativeTimeText(date: nextDueAt)
                     } else {

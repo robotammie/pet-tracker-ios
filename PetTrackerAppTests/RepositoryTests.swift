@@ -136,6 +136,8 @@ final class RepositoryTests: XCTestCase {
     }
 
     func testInitializationDoesNotReseedEmptyCloudOrPreviouslyInitializedStores() {
+        XCTAssertFalse(InitialDataPolicy.shouldSeed(hasLocalData: false, initialized: false,
+            syncConfigured: false, allowsSeedData: false))
         XCTAssertTrue(InitialDataPolicy.shouldSeed(hasLocalData: false, initialized: false, syncConfigured: false))
         XCTAssertFalse(InitialDataPolicy.shouldSeed(hasLocalData: true, initialized: false, syncConfigured: false))
         XCTAssertFalse(InitialDataPolicy.shouldSeed(hasLocalData: false, initialized: true, syncConfigured: false))

@@ -376,7 +376,18 @@ enum LocalPersistence {
 }
 
 enum InitialDataPolicy {
-    static func shouldSeed(hasLocalData: Bool, initialized: Bool, syncConfigured: Bool) -> Bool {
-        !hasLocalData && !initialized && !syncConfigured
+    static var developmentSeedsEnabled: Bool {
+        #if DEBUG
+        true
+        #else
+        false
+        #endif
+    }
+
+    static func shouldSeed(
+        hasLocalData: Bool, initialized: Bool, syncConfigured: Bool,
+        allowsSeedData: Bool = developmentSeedsEnabled
+    ) -> Bool {
+        allowsSeedData && !hasLocalData && !initialized && !syncConfigured
     }
 }

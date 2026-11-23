@@ -125,7 +125,8 @@ struct PersistentRootView: View {
             if InitialDataPolicy.shouldSeed(
                 hasLocalData: hasData,
                 initialized: defaults.bool(forKey: "PetTrackerApp.didInitializeLocalStore"),
-                syncConfigured: SyncBuildConfiguration.containerIdentifier != nil)
+                syncConfigured: SyncBuildConfiguration.containerIdentifier != nil,
+                allowsSeedData: UITestConfiguration.isEnabled || InitialDataPolicy.developmentSeedsEnabled)
             {
                 try LocalPersistence.transaction(context: modelContext) {
                     try seedInitialData(

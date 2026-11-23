@@ -41,10 +41,11 @@ struct ReminderSummaryRow: View {
 
     private var summaryContent: some View {
         HStack(alignment: .top, spacing: 12) {
-            if showsEventIcon, let eventType = reminder.eventType {
+            if showsEventIcon, let eventType = reminder.eventActions?.first?.type ?? reminder.eventType {
                 Image(systemName: eventType.homeSystemImage)
                     .foregroundStyle(.secondary)
-                    .frame(width: 24)
+                    .frame(width: dynamicTypeSize.isAccessibilitySize ? nil : 24)
+                    .accessibilityHidden(true)
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -63,8 +64,7 @@ struct ReminderSummaryRow: View {
                     }
                 }
 
-                Text([reminder.mode.rawValue, reminder.eventType?.rawValue]
-                    .compactMap { $0 }.joined(separator: " · "))
+                Text(summaryDescription)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -73,6 +73,14 @@ struct ReminderSummaryRow: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(rowAccessibilityIdentifier ?? "")
+    }
+
+    private var summaryDescription: String {
+        guard reminder.mode == .reminderToEvent else { return "Reminder" }
+        let types = reminder.eventActions?.map(\.type) ?? reminder.eventType.map { [$0] } ?? []
+        var seen = Set<CareEventType>()
+        let names = types.filter { seen.insert($0).inserted }.map(\.rawValue)
+        return names.isEmpty ? "Creates events when completed" : "Creates " + names.joined(separator: " · ")
     }
 
     private var statusText: some View {

@@ -5,13 +5,13 @@ Use this file to resume the project in a fresh Codex chat/session.
 ## Resume Prompt
 
 ```text
-We are continuing an iOS SwiftUI app in this repo. Please read README.md, design.md, plan.md, handoff.md, and sync-design.md, then inspect git status before making changes. Stages 0–6 and functionality Stages 6.2–6.3 are implemented; Stage 6.1 event history actions and Stage 6.4 milestone verification remain. Preserve the completed work and verification evidence.
+We are continuing an iOS SwiftUI app in this repo. Please read README.md, design.md, plan.md, handoff.md, and sync-design.md, then inspect git status before making changes. Stages 0–6 and functionality Stages 6.2–6.3 are implemented; Stage 6.1 event history actions are deferred. Finalize the current app, then prioritize multi-user sync and TestFlight planning. Preserve the completed work and verification evidence.
 ```
 
 ## Project Snapshot
 
 - App: native iOS SwiftUI pet care tracker.
-- Current milestone: Stages 0 through 6 are complete. Functionality Stages 6.2–6.3 implement reminder recurrence deletion and automatic food and litter schedules. Stage 6.1 event history actions and combined Stage 6.4 physical-device verification remain.
+- Current milestone: Stages 0 through 6 are complete. Functionality Stages 6.2–6.3 implement reminder recurrence deletion and automatic food and litter schedules. Stage 6.1 event history actions are deferred; current-app polish/verification precedes multi-user sync.
 - Persistence: SwiftData for app data, UserDefaults for device-local notification settings.
 - Sync: explicit CloudKit is enabled in signed Debug builds for `iCloud.com.tammie.PetTrackerApp`; Release remains local-only until production schema deployment. See sync-design.md. Future multi-user household sharing remains an architectural goal.
 - Scope: cats/pets, food events, medicine events, litter events, health history, reminders, saved food/medicine options, local notifications, focused settings.
@@ -192,7 +192,7 @@ Signed Debug builds use CloudKit Development; Release remains local-only until p
 - The Reminders tab has a Scheduled Events section and a calendar/clock add button. Schedule add/edit/delete supports saved food, household or one pet, recurrence, and optional end date. The UI states that due events appear when the app next runs and retain their scheduled time.
 - Due schedules materialize after launch/foreground refresh, schedule saves, and successful sync imports. Catch-up is chronological and bounded to 100 occurrences per schedule per pass; deleting a schedule leaves generated events.
 - Final regression on 2026-09-15 passed all 119 unit/persistence/sync tests and all 23 UI tests. The result bundles are recorded in `plan.md`.
-- Stage 6.1 event archive/restore/duplicate remains planned. Stage 6.4 still includes combined physical-iPhone upgrade/notification verification after Stage 6.1.
+- Stage 6.1 event archive/restore/duplicate remains planned. Stage 6.4 includes physical-iPhone upgrade/notification verification; Stage 6.1 is now deferred.
 
 ## Home interaction updates (2026-11-22)
 
@@ -213,3 +213,14 @@ Events + now sits beside the category heading. Food and litter creation can enab
 Additive optional SwiftData fields retain legacy records. Sync envelope format 2 protects new action bundles and litter schedules from lossy interpretation by older clients. Update all syncing devices before using the new payloads. The 131-test unit suite passes, including an actual pre-change public simulator database-copy upgrade without reset. See plan.md for UI verification results.
 
 Final verification: 131 unit tests and all 26 UI workflows pass across the full run plus focused reruns after fixes. Build and whitespace checks pass. Fixed the confirmation swipe animation crash as well as form keyboard/hit-area issues. Updated design/README/sync notes and plan evidence. The refinement is committed; the phone has not been updated with it.
+
+
+## Current priority decision (2026-11-22)
+
+The user deferred archive/restore/duplicate and requested finalizing the existing app with polish/tests before discussing multi-user sync and TestFlight. Do not build the deferred features. The first-listed-event icon is included in the polish pass. Release builds exclude the private seed source and do not seed fresh installations; Debug/UI fixtures remain supported. Do not read or modify the ignored private seed file.
+
+The multi-user/TestFlight brief is appended to sync-design.md. Confirmed: iPhone/iCloud users, whole-household sharing, all members edit/delete, notify everyone with individual preferences, retain household data when members leave, and show who logged events. CKShare remains the recommended implementation. Join/import behavior, technical owner continuity, departing-device copies, and multi-household scope remain lifecycle choices; see sync-design.md. Release sync remains disabled until a deliberate Production rollout. No publication/deployment has been performed. Device checks remain distinct from simulator tests.
+
+Polish and automated verification: first-action icons, readable reminder subtitles, accessible event removal targets, and largest-text layouts are implemented. Quick Add becomes a two-column grid at accessibility sizes; row icons retain their natural width. Full baseline passed 131 unit tests and 26 UI workflows, with final-polish unit/focused reruns and a new largest-text UI workflow also passing. Release simulator compilation passed and its compiler input list excludes the private seed source. Current polish/docs changes are uncommitted; the preexisting untracked shared scheme remains untouched. Latest phone upgrade, physical notification behavior, and live Production/sharing remain outstanding verification gates. See plan.md for exact result bundles and infrastructure/test-helper failures resolved during this pass.
+
+Owner/closure decision (2026-11-22): a departing owner designates a successor when others remain. The final member can delete all household data or save it as a reloadable seed/backup file. Plan a verified owner handoff and lossless export/import, retaining history and attribution. CloudKit storage ownership must be handled explicitly; changing an app owner field alone is insufficient. See sync-design.md for implementation gates and unresolved unexpected-owner-loss/restore details. This records scope only; no data is deleted, exported, or published.
